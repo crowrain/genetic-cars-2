@@ -44,8 +44,15 @@
       var sorted = normals.slice().sort(function (a, b) {
         return a - b;
       });
+      // Build rank map once: O(n) instead of indexOf O(n²)
+      var rankMap = new Map();
+      for (var i = 0; i < sorted.length; i++) {
+        if (!rankMap.has(sorted[i])) {
+          rankMap.set(sorted[i], i);
+        }
+      }
       return normals.map(function (val) {
-        return sorted.indexOf(val);
+        return rankMap.get(val);
       }).map(function (i) {
         return i + offset;
       }).slice(0, limit);
@@ -284,7 +291,7 @@ function createNormal(prop, generator) {
 
   function createChassis(world, vertexs, density) {
 
-    var vertex_list = new Array();
+    var vertex_list = [];
     vertex_list.push(new b2Vec2(vertexs[0], 0));
     vertex_list.push(new b2Vec2(vertexs[1], vertexs[2]));
     vertex_list.push(new b2Vec2(0, vertexs[3]));
@@ -316,7 +323,7 @@ function createNormal(prop, generator) {
 
 
   function createChassisPart(body, vertex1, vertex2, density) {
-    var vertex_list = new Array();
+    var vertex_list = [];
     vertex_list.push(vertex1);
     vertex_list.push(vertex2);
     vertex_list.push(b2Vec2.Make(0, 0));
@@ -466,7 +473,7 @@ function createNormal(prop, generator) {
 
     var state = currentChoices.get(chooseId);
     state.i++
-    if (["wheel_radius", "wheel_vertex", "wheel_density"].indexOf(key) > -1) {
+    if (key === "wheel_radius" || key === "wheel_vertex" || key === "wheel_density") {
       state.curparent = cw_chooseParent(state);
       return state.curparent;
     }
@@ -571,10 +578,9 @@ function createNormal(prop, generator) {
         generationSize = config.generationSize,
         selectFromAllParents = config.selectFromAllParents;
 
-      var newGeneration = new Array();
+      var newGeneration = [];
       var newborn;
       for (var k = 0; k < champion_length; k++) {
-        ``
         var elite = cw_slimCarDefinition(scores[k].def);
         elite.is_elite = true;
         elite.index = k;
@@ -616,82 +622,6 @@ function createNormal(prop, generator) {
       var schema = config.schema,
         mutation_range = config.mutation_range,
         gen_mutation = config.gen_mutation,
-        generateRandom = config.generateRandom;
-      return create.createMutatedClone(
-        schema,
-        generateRandom,
-        parent,
-        Math.max(mutation_range),
-        gen_mutation
-      )
-    }
-
-    return { generationZero: generationZero, nextGeneration: nextGeneration };
-  })();
-
-
-  /* -------------------------------------------------------------------------
-   * machine-learning/simulated-annealing/manage-round.js
-   * ------------------------------------------------------------------------- */
-  var manageRoundSA = (function () {
-    var create = createInstance;
-
-
-
-    function generationZero(config) {
-      var oldStructure = create.createGenerationZero(
-        config.schema, config.generateRandom
-      );
-      var newStructure = createStructure(config, 1, oldStructure);
-
-      var k = 0;
-
-      return {
-        counter: 0,
-        k: k,
-        generation: [newStructure, oldStructure]
-      }
-    }
-
-    function nextGeneration(previousState, scores, config) {
-      var nextState = {
-        k: (previousState.k + 1) % config.generationSize,
-        counter: previousState.counter + (previousState.k === config.generationSize ? 1 : 0)
-      };
-      // gradually get closer to zero temperature (but never hit it)
-      var oldDef = previousState.curDef || previousState.generation[1];
-      var oldScore = previousState.score || scores[1].score.v;
-
-      var newDef = previousState.generation[0];
-      var newScore = scores[0].score.v;
-
-
-      var temp = Math.pow(Math.E, -nextState.counter / config.generationSize);
-
-      var scoreDiff = newScore - oldScore;
-      // If the next point is higher, change location
-      if (scoreDiff > 0) {
-        nextState.curDef = newDef;
-        nextState.score = newScore;
-        // Else we want to increase likelyhood of changing location as we get
-      } else if (Math.random() > Math.exp(-scoreDiff / (nextState.k * temp))) {
-        nextState.curDef = newDef;
-        nextState.score = newScore;
-      } else {
-        nextState.curDef = oldDef;
-        nextState.score = oldScore;
-      }
-
-
-      nextState.generation = [createStructure(config, temp, nextState.curDef)];
-
-      return nextState;
-    }
-
-
-    function createStructure(config, mutation_range, parent) {
-      var schema = config.schema,
-        gen_mutation = 1,
         generateRandom = config.generateRandom;
       return create.createMutatedClone(
         schema,
@@ -1079,40 +1009,28 @@ function createNormal(prop, generator) {
     }).slice(0, maxLength);
   }
 
-  function cw_plotTop(state, graphctx) {
-    var cw_graphTop = state.cw_graphTop;
-    var graphsize = cw_graphTop.length;
-    graphctx.strokeStyle = "#C83B3B";
+  function cw_plotLine(state, graphctx, dataKey, color) {
+    var data = state[dataKey];
+    var graphsize = data.length;
+    graphctx.strokeStyle = color;
     graphctx.beginPath();
     graphctx.moveTo(0, 0);
     for (var k = 0; k < graphsize; k++) {
-      graphctx.lineTo(400 * (k + 1) / graphsize, cw_graphTop[k]);
+      graphctx.lineTo(400 * (k + 1) / graphsize, data[k]);
     }
     graphctx.stroke();
+  }
+
+  function cw_plotTop(state, graphctx) {
+    cw_plotLine(state, graphctx, "cw_graphTop", "#C83B3B");
   }
 
   function cw_plotElite(state, graphctx) {
-    var cw_graphElite = state.cw_graphElite;
-    var graphsize = cw_graphElite.length;
-    graphctx.strokeStyle = "#7BC74D";
-    graphctx.beginPath();
-    graphctx.moveTo(0, 0);
-    for (var k = 0; k < graphsize; k++) {
-      graphctx.lineTo(400 * (k + 1) / graphsize, cw_graphElite[k]);
-    }
-    graphctx.stroke();
+    cw_plotLine(state, graphctx, "cw_graphElite", "#7BC74D");
   }
 
   function cw_plotAverage(state, graphctx) {
-    var cw_graphAverage = state.cw_graphAverage;
-    var graphsize = cw_graphAverage.length;
-    graphctx.strokeStyle = "#3F72AF";
-    graphctx.beginPath();
-    graphctx.moveTo(0, 0);
-    for (var k = 0; k < graphsize; k++) {
-      graphctx.lineTo(400 * (k + 1) / graphsize, cw_graphAverage[k]);
-    }
-    graphctx.stroke();
+    cw_plotLine(state, graphctx, "cw_graphAverage", "#3F72AF");
   }
 
 
@@ -1378,7 +1296,7 @@ function createNormal(prop, generator) {
     fix_def.shape = new b2PolygonShape();
     fix_def.friction = 0.5;
 
-    var coords = new Array();
+    var coords = [];
     coords.push(new b2Vec2(0, 0));
     coords.push(new b2Vec2(0, -dim.y));
     coords.push(new b2Vec2(dim.x, -dim.y));
@@ -2389,12 +2307,12 @@ function createNormal(prop, generator) {
 
   }
 
-  function relMouseCoords(event) {
+  function relMouseCoords(event, element) {
     var totalOffsetX = 0;
     var totalOffsetY = 0;
     var canvasX = 0;
     var canvasY = 0;
-    var currentElement = this;
+    var currentElement = element;
 
     do {
       totalOffsetX += currentElement.offsetLeft - currentElement.scrollLeft;
@@ -2408,9 +2326,8 @@ function createNormal(prop, generator) {
 
     return { x: canvasX, y: canvasY }
   }
-  HTMLDivElement.prototype.relMouseCoords = relMouseCoords;
   minimapholder.onclick = function (event) {
-    var coords = minimapholder.relMouseCoords(event);
+    var coords = relMouseCoords(event, minimapholder);
     var cw_carArray = Array.from(carMap.values());
     var closest = {
       value: cw_carArray[0].car,

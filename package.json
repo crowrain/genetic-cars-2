@@ -1,0 +1,29 @@
+{
+  "name": "html5-genetic-cars",
+  "version": "1.0.0",
+  "description": "HTML5 Genetic Algorithm 2D Car Simulation - evolves random two-wheeled shapes into cars using a genetic algorithm with Box2D physics",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "npx http-server -p 8080 -c-1",
+    "lint": "npx eslint src/app.js",
+    "format": "npx prettier --write 'src/**/*.js' '*.html' '*.css'"
+  },
+  "keywords": [
+    "genetic-algorithm",
+    "box2d",
+    "physics-simulation",
+    "evolution",
+    "html5",
+    "canvas"
+  ],
+  "author": "Rafael Matsunaga <red42>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/crowrain/genetic-cars-2.git"
+  },
+  "bugs": {
+    "url": "https://github.com/crowrain/genetic-cars-2/issues"
+  },
+  "homepage": "https://github.com/crowrain/genetic-cars-2#readme"
+}
