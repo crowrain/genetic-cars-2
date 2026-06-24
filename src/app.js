@@ -582,6 +582,11 @@ function createNormal(prop, generator) {
     state.curparent = cw_chooseParent(state);
     return state.curparent;
 
+/**
+     * Select a parent using tournament selection for genetic algorithm.
+     * @param {Object} state - Selection state
+     * @returns {Object} Selected parent
+     */
     function cw_chooseParent(state) {
       var curparent = state.curparent;
       var attributeIndex = state.i;
@@ -1260,6 +1265,12 @@ function createNormal(prop, generator) {
     return sum / Math.floor(generationSize / 2);
   }
 
+/**
+   * Calculate the average of an array of scores.
+   * @param {number[]} scores - Array of numeric scores
+   * @param {number} generationSize - Population size for normalization
+   * @returns {number} Average score
+   */
   function cw_average(scores, generationSize) {
     var sum = 0;
     for (var k = 0; k < generationSize; k++) {
@@ -1563,6 +1574,13 @@ function createNormal(prop, generator) {
     return body;
   }
 
+/**
+   * Rotate floor tile coordinates around a center point.
+   * @param {{x: number, y: number}} coords - Original coordinates
+   * @param {{x: number, y: number}} center - Rotation center
+   * @param {number} angle - Rotation angle in radians
+   * @returns {{x: number, y: number}} Rotated coordinates
+   */
   function cw_rotateFloorTile(coords, center, angle) {
     return coords.map(function (coord) {
       return {
@@ -1741,6 +1759,9 @@ function createNormal(prop, generator) {
     cw_graphTop: [],
   };
 
+/**
+   * Reset all graph tracking state (history arrays, scores).
+   */
   function resetGraphState() {
     graphState = {
       cw_topScores: [],
@@ -1782,6 +1803,11 @@ function createNormal(prop, generator) {
     };
   })();
 
+/**
+   * Update the distance and height display on the statistics table.
+   * @param {number} distance - Current best distance
+   * @param {number} height - Current height
+   */
   function showDistance(distance, height) {
     distanceMeter.innerHTML = distance + " meters<br />";
     heightMeter.innerHTML = height + " meters";
@@ -1791,6 +1817,11 @@ function createNormal(prop, generator) {
     }
   }
 
+/**
+   * Update the server sync status indicator.
+   * @param {string} text - Status message
+   * @param {string} state - CSS state class
+   */
   function serverSetStatus(text, state) {
     if (!serverSync.statusElem) {
       return;
@@ -1799,6 +1830,11 @@ function createNormal(prop, generator) {
     serverSync.statusElem.className = "server-status" + (state ? " " + state : "");
   }
 
+/**
+   * Normalize graph state object to a consistent format.
+   * @param {Object} input - Raw state object
+   * @returns {Object} Normalized state
+   */
   function normalizeGraphState(input) {
     input = input || {};
     return {
@@ -1809,6 +1845,12 @@ function createNormal(prop, generator) {
     };
   }
 
+/**
+   * Build a snapshot of current simulation progress for saving.
+   * @param {string} reason - Reason for saving (manual, checkpoint, etc.)
+   * @param {Object} options - Snapshot options
+   * @returns {Object} Progress snapshot
+   */
   function buildProgressSnapshot(reason, options) {
     options = options || {};
     var bestScore = (graphState.cw_topScores || [])[0] || null;
@@ -1833,6 +1875,12 @@ function createNormal(prop, generator) {
     };
   }
 
+/**
+   * Apply a saved progress snapshot to restore simulation state.
+   * @param {Object} snapshot - Saved progress data
+   * @param {Object} options - Apply options
+   * @returns {boolean} Whether restoration succeeded
+   */
   function applyProgressSnapshot(snapshot, options) {
     options = options || {};
     if (!snapshot || !Array.isArray(snapshot.savedGeneration)) {
@@ -1880,6 +1928,10 @@ function createNormal(prop, generator) {
     return true;
   }
 
+/**
+   * Save progress snapshot to browser localStorage.
+   * @param {Object} snapshot - Progress snapshot
+   */
   function saveProgressToLocal(snapshot) {
     localStorage.cw_savedGeneration = JSON.stringify(snapshot.savedGeneration);
     localStorage.cw_genCounter = snapshot.generation;
@@ -1889,6 +1941,10 @@ function createNormal(prop, generator) {
     localStorage.cw_floorSeed = snapshot.floorSeed;
   }
 
+/**
+   * Load progress snapshot from browser localStorage.
+   * @returns {Object|null} Saved snapshot or null
+   */
   function loadProgressFromLocal() {
     if (typeof localStorage.cw_savedGeneration == 'undefined' || localStorage.cw_savedGeneration == null) {
       return null;
@@ -1905,6 +1961,11 @@ function createNormal(prop, generator) {
     };
   }
 
+/**
+   * Fetch the latest progress snapshot from the server API.
+   * @param {Object} options - Fetch options
+   * @returns {Promise<Object>} Server snapshot
+   */
   function serverLoadLatest(options) {
     options = options || {};
     if (!serverSync.enabled) {
@@ -1947,6 +2008,9 @@ function createNormal(prop, generator) {
     });
   }
 
+/**
+   * Apply a server snapshot that was fetched asynchronously.
+   */
   function applyPendingServerSnapshot() {
     var snapshot = serverSync.pendingSnapshot;
     if (!snapshot) {
@@ -1967,6 +2031,10 @@ function createNormal(prop, generator) {
     return false;
   }
 
+/**
+   * Queue a progress snapshot for upload to the server.
+   * @param {string} reason - Save reason
+   */
   function queueServerSave(reason) {
     if (!serverSync.enabled || !serverSync.isRunner) {
       return;
@@ -2003,6 +2071,9 @@ function createNormal(prop, generator) {
     });
   }
 
+/**
+   * Start periodic polling for server-side progress updates.
+   */
   function startServerPolling() {
     if (!serverSync.enabled || serverSync.isRunner || serverSync.pollTimer) {
       return;
@@ -2015,6 +2086,9 @@ function createNormal(prop, generator) {
     }, serverSync.pollMs);
   }
 
+/**
+   * Start autonomous simulation runner (auto-advances generations).
+   */
   function startAutonomousRunner() {
     if (serverSync.runnerStarted) {
       return;
@@ -2032,6 +2106,9 @@ function createNormal(prop, generator) {
     serverSetStatus("Server runner: evolving generation " + generationState.counter, "running");
   }
 
+/**
+   * Initialize server synchronization subsystem.
+   */
   function initServerSync() {
     if (!serverSync.enabled) {
       serverSetStatus("Server sync: disabled", "warning");
@@ -2107,6 +2184,10 @@ function createNormal(prop, generator) {
     ctx.restore();
   }
 
+/**
+   * Calculate minimap camera viewport transformation.
+   * @returns {Object} Camera transform data
+   */
   function cw_minimapCamera() {
     var camera_x = camera.pos.x
     var camera_y = camera.pos.y
@@ -2114,6 +2195,10 @@ function createNormal(prop, generator) {
     minimapcamera.top = Math.round((31 - camera_y) * minimapscale) + "px";
   }
 
+/**
+   * Set camera follow target (leader car index).
+   * @param {number} k - Car index to follow
+   */
   function cw_setCameraTarget(k) {
     if (k === -1) {
       camera.target = -1;
@@ -2132,6 +2217,9 @@ function createNormal(prop, generator) {
     }
   }
 
+/**
+   * Update camera position to follow the target car.
+   */
   function cw_setCameraPosition() {
     var cameraTargetPosition
     if (camera.target !== -1 && carMap.has(camera.target)) {
@@ -2147,6 +2235,9 @@ function createNormal(prop, generator) {
     cw_minimapCamera();
   }
 
+/**
+   * Draw the ghost replay overlay on the main canvas.
+   */
   function cw_drawGhostReplay() {
     var floorTiles = currentRunner.scene.floorTiles;
     var carPosition = ghost_get_position(ghost);
@@ -2182,6 +2273,9 @@ function createNormal(prop, generator) {
   }
 
 
+/**
+   * Draw all active cars on the main canvas.
+   */
   function cw_drawCars() {
     var cw_carArray = Array.from(carMap.values());
     for (var k = (cw_carArray.length - 1); k >= 0; k--) {
@@ -2190,6 +2284,10 @@ function createNormal(prop, generator) {
     }
   }
 
+/**
+   * Toggle individual car visibility on/off.
+   * @param {number} carIndex - Car index to toggle
+   */
   function toggleDisplay() {
     canvas.width = canvas.width;
     if (doDraw) {
@@ -2209,6 +2307,9 @@ function createNormal(prop, generator) {
     }
   }
 
+/**
+   * Draw the minimap overview showing car positions and terrain.
+   */
   function cw_drawMiniMap() {
     var floorTiles = currentRunner.scene.floorTiles;
     var last_tile = null;
@@ -2278,6 +2379,9 @@ function createNormal(prop, generator) {
     }
   }
 
+/**
+   * Execute a single simulation step (physics update + status check).
+   */
   function simulationStep() {
     currentRunner.step();
     showDistance(
@@ -2304,6 +2408,10 @@ function createNormal(prop, generator) {
     if (!cw_paused) cw_animationFrameId = window.requestAnimationFrame(gameLoop);
   }
 
+/**
+   * Update the car information panel with current car data.
+   * @param {Object} carInfo - Car state information
+   */
   function updateCarUI(carInfo) {
     var k = carInfo.index;
     var car = carMap.get(carInfo);
@@ -2318,6 +2426,10 @@ function createNormal(prop, generator) {
     }
   }
 
+/**
+   * Find the leading car (highest score in current generation).
+   * @returns {Object} Leader car data
+   */
   function cw_findLeader() {
     var lead = 0;
     carMap.forEach(function(cwCar, carInfo) {
@@ -2333,6 +2445,9 @@ function createNormal(prop, generator) {
     });
   }
 
+/**
+   * Toggle fast-forward mode (multiple physics steps per frame).
+   */
   function fastForward() {
     var gen = generationState.counter;
     while (gen === generationState.counter) {
@@ -2340,6 +2455,10 @@ function createNormal(prop, generator) {
     }
   }
 
+/**
+   * Clean up resources after a simulation round completes.
+   * @param {Object} results - Round results
+   */
   function cleanupRound(results) {
 
     results.sort(function (a, b) {
@@ -2358,6 +2477,10 @@ function createNormal(prop, generator) {
     );
   }
 
+/**
+   * Start a new simulation round (new generation or restart).
+   * @param {Object} results - Previous round results
+   */
   function cw_newRound(results) {
     camera.pos.x = camera.pos.y = 0;
     cw_setCameraTarget(-1);
@@ -2402,12 +2525,18 @@ function createNormal(prop, generator) {
     }
   }
 
+/**
+   * Remove all car bodies and fixtures from the Box2D world.
+   */
   function cw_clearPopulationWorld() {
     carMap.forEach(function (car) {
       car.kill(currentRunner, world_def);
     });
   }
 
+/**
+   * Reset population-related UI elements to initial state.
+   */
   function cw_resetPopulationUI() {
     document.getElementById("generation").innerHTML = "";
     document.getElementById("cars").innerHTML = "";
@@ -2417,6 +2546,9 @@ function createNormal(prop, generator) {
     resetGraphState();
   }
 
+/**
+   * Reset the entire world (physics, UI, population).
+   */
   function cw_resetWorld() {
     doDraw = true;
     cw_stopSimulation();
@@ -2438,6 +2570,9 @@ function createNormal(prop, generator) {
     cw_startSimulation();
   }
 
+/**
+   * Set up the car information panel UI with click handlers.
+   */
   function setupCarUI() {
     currentRunner.cars.map(function (carInfo) {
       var car = new cw_Car(carInfo, carMap);
@@ -2478,10 +2613,16 @@ function createNormal(prop, generator) {
     cw_startSimulation();
   })
 
+/**
+   * Trigger manual save of current progress to localStorage.
+   */
   function saveProgress() {
     saveProgressToLocal(buildProgressSnapshot("manual", { includeGhost: true }));
   }
 
+/**
+   * Restore simulation from the last saved progress.
+   */
   function restoreProgress() {
     var snapshot = loadProgressFromLocal();
     if (!snapshot) {
@@ -2495,6 +2636,9 @@ function createNormal(prop, generator) {
     cw_confirmResetWorld()
   })
 
+/**
+   * Confirm and execute world reset after user click.
+   */
   function cw_confirmResetWorld() {
     if (confirm('Really reset world?')) {
       cw_resetWorld();
@@ -2506,16 +2650,25 @@ function createNormal(prop, generator) {
   // ghost replay stuff
 
 
+/**
+   * Pause the simulation (stop game loop).
+   */
   function cw_pauseSimulation() {
     cw_stopSimulation();
     ghost_pause(ghost);
   }
 
+/**
+   * Resume a paused simulation.
+   */
   function cw_resumeSimulation() {
     ghost_resume(ghost);
     cw_startSimulation();
   }
 
+/**
+   * Start ghost replay mode (show best car replay).
+   */
   function cw_startGhostReplay() {
     if (!doDraw) {
       toggleDisplay();
@@ -2524,6 +2677,9 @@ function createNormal(prop, generator) {
     cw_ghostReplayInterval = setInterval(cw_drawGhostReplay, Math.round(1000 / screenfps));
   }
 
+/**
+   * Stop ghost replay mode and resume simulation.
+   */
   function cw_stopGhostReplay() {
     clearInterval(cw_ghostReplayInterval);
     cw_ghostReplayInterval = null;
@@ -2537,6 +2693,10 @@ function createNormal(prop, generator) {
     cw_toggleGhostReplay(e.target)
   })
 
+/**
+   * Toggle ghost replay on/off via button click.
+   * @param {HTMLButtonElement} button - Clicked button element
+   */
   function cw_toggleGhostReplay(button) {
     if (cw_ghostReplayInterval == null) {
       cw_startGhostReplay();
@@ -2587,6 +2747,12 @@ function createNormal(prop, generator) {
 
   }
 
+/**
+   * Calculate mouse coordinates relative to canvas element.
+   * @param {MouseEvent} event - Mouse event
+   * @param {HTMLCanvasElement} element - Target canvas
+   * @returns {{x: number, y: number}} Relative coordinates
+   */
   function relMouseCoords(event, element) {
     var totalOffsetX = 0;
     var totalOffsetY = 0;
@@ -2660,18 +2826,34 @@ function createNormal(prop, generator) {
     cw_setEliteSize(elem.options[elem.selectedIndex].value)
   })
 
+/**
+   * Set the mutation rate for the genetic algorithm.
+   * @param {number} mutation - Mutation rate percentage
+   */
   function cw_setMutation(mutation) {
     generationConfig.constants.gen_mutation = parseFloat(mutation);
   }
 
+/**
+   * Set the mutation size/range for gene mutation.
+   * @param {number} range - Mutation range percentage
+   */
   function cw_setMutationRange(range) {
     generationConfig.constants.mutation_range = parseFloat(range);
   }
 
+/**
+   * Set floor mutation mode (fixed vs mutable terrain).
+   * @param {string} choice - 'fixed' or 'mutable'
+   */
   function cw_setMutableFloor(choice) {
     world_def.mutable_floor = (choice == 1);
   }
 
+/**
+   * Set gravity value for the physics simulation.
+   * @param {string} choice - Gravity preset name
+   */
   function cw_setGravity(choice) {
     world_def.gravity = new b2Vec2(0.0, -parseFloat(choice));
     var world = currentRunner.scene.world
@@ -2681,6 +2863,10 @@ function createNormal(prop, generator) {
     }
   }
 
+/**
+   * Set the number of elite clones carried to the next generation.
+   * @param {number} clones - Number of elite clones
+   */
   function cw_setEliteSize(clones) {
     generationConfig.constants.championLength = parseInt(clones, 10);
   }
