@@ -105,6 +105,14 @@
 
 
 
+/**
+ * Create a symmetric (inclusive) normal-distributed random value [0, 1].
+ * @param {{inclusive: boolean}} prop - Options for symmetry.
+ * @param {function} generator - Random number generator.
+ * @returns {number} Random value in [0, 1].
+ */
+
+
 function createNormal(prop, generator) {
     if (!prop.inclusive) {
       return generator();
@@ -176,6 +184,13 @@ function createNormal(prop, generator) {
     },
   }
 
+  /**
+   * Strip car definition of ancestry metadata for serialization.
+   * @param {Object} def - Full car definition.
+   * @returns {Object} Slim definition without ancestry.
+   */
+
+
   function cw_slimCarDefinition(def) {
     return Object.keys(def).reduce(function (clone, key) {
       if (key !== "ancestry") {
@@ -184,6 +199,13 @@ function createNormal(prop, generator) {
       return clone;
     }, { id: def.id });
   }
+
+  /**
+   * Strip an entire generation of ancestry metadata for serialization.
+   * @param {Array} generation - Array of car definitions.
+   * @returns {Array} Slim generation.
+   */
+
 
   function cw_slimGeneration(generation) {
     return (generation || []).map(cw_slimCarDefinition);
@@ -212,6 +234,12 @@ function createNormal(prop, generator) {
   var carConstruct = (function () {
     var carConstants = carConstantsData;
 
+    /**
+     * Build the physics world definition (gravity, dimensions, seed).
+     * @returns {Object} World configuration object.
+     */
+
+
     function worldDef() {
       var box2dfps = 60;
       return {
@@ -221,7 +249,19 @@ function createNormal(prop, generator) {
         tileDimensions: { width: 1.5, height: 0.15 }
       };
     }
+/**
+     * Retrieve car physics constants (wheel radius, density, friction, motor torque).
+     * @returns {{wheelRadius: number, wheelDensity: number, wheelFriction: number, motorTorque: number}}
+     */
     function getCarConstants() { return carConstants; }
+    /**
+     * Build a genetic schema from an array of float values.
+     * Maps raw gene values to the schema structure (chassis, wheels, joints).
+     * @param {number[]} values - Raw gene array.
+     * @returns {Object} Schema object with typed gene arrays.
+     */
+
+
     function generateSchema(values) {
       return {
         wheel_radius: { type: "float", length: values.wheelCount, min: values.wheelMinRadius, range: values.wheelRadiusRange, factor: 1 },
@@ -244,6 +284,15 @@ function createNormal(prop, generator) {
 
 
 
+
+
+  /**
+   * Convert a genetic schema definition into a physical car (Box2D bodies + joints).
+   * @param {Object} normal_def - Genetic schema with typed values.
+   * @param {b2World} world - Box2D physics world.
+   * @param {Object} constants - Car constants (mass, friction, etc).
+   * @returns {Object} Car with physics bodies and joints.
+   */
 
 
   function defToCar(normal_def, world, constants) {
@@ -289,6 +338,15 @@ function createNormal(prop, generator) {
     return instance;
   }
 
+  /**
+   * Create a convex polygon chassis body from vertices.
+   * @param {b2World} world - Box2D physics world.
+   * @param {b2Vec2[]} vertexs - Array of chassis vertices.
+   * @param {number} density - Chassis material density.
+   * @returns {b2Body} Chassis body.
+   */
+
+
   function createChassis(world, vertexs, density) {
 
     var vertex_list = [];
@@ -322,6 +380,17 @@ function createNormal(prop, generator) {
   }
 
 
+/**
+   * Create a single chassis polygon body in Box2D.
+   * @param {Object} world - Box2D world
+   * @param {number} x - X position
+   * @param {number} y - Y position
+   * @param {number} rotation - Rotation in radians
+   * @param {Array} vertices - Polygon vertices
+   * @param {Object} parentBody - Parent body to attach as fixture
+   * @param {boolean} isWheel - Whether this is a wheel
+   * @returns {Object} The created Box2D body
+   */
   function createChassisPart(body, vertex1, vertex2, density) {
     var vertex_list = [];
     vertex_list.push(vertex1);
@@ -337,6 +406,15 @@ function createNormal(prop, generator) {
 
     body.CreateFixture(fix_def);
   }
+
+  /**
+   * Create a circular wheel body with physics fixtures.
+   * @param {b2World} world - Box2D physics world.
+   * @param {number} radius - Wheel radius in meters.
+   * @param {number} density - Wheel material density.
+   * @returns {b2Body} Wheel body.
+   */
+
 
   function createWheel(world, radius, density) {
     var body_def = new b2BodyDef();
@@ -369,6 +447,13 @@ function createNormal(prop, generator) {
     calculateScore: calculateScore,
   };
 
+  /**
+   * Build the initial physics state for a car (positions, velocities).
+   * @param {Object} world_def - World configuration.
+   * @returns {Object} Initial state with body transforms and velocities.
+   */
+
+
   function getInitialState(world_def) {
     return {
       frames: 0,
@@ -378,6 +463,15 @@ function createNormal(prop, generator) {
       maxPositionx: 0,
     };
   }
+
+  /**
+   * Step physics simulation: apply forces, update state, check status.
+   * @param {Object} constants - Car physics constants.
+   * @param {Function} worldConstruct - Function to recreate world each step.
+   * @param {Object} state - Current car state.
+   * @returns {Object} Updated state with status.
+   */
+
 
   function updateState(constants, worldConstruct, state) {
     if (state.health <= 0) {
@@ -412,6 +506,14 @@ function createNormal(prop, generator) {
     }
     return nextState;
   }
+
+  /**
+   * Determine car status based on position relative to track bounds.
+   * @param {Object} state - Current car state.
+   * @param {Object} constants - Car constants.
+   * @returns {number} Status code (0=alive, 1=failed, 2=success).
+   */
+
 
   function getStatus(state, constants) {
     if (hasFailed(state, constants)) return -1;
@@ -480,6 +582,11 @@ function createNormal(prop, generator) {
     state.curparent = cw_chooseParent(state);
     return state.curparent;
 
+/**
+     * Select a parent using tournament selection for genetic algorithm.
+     * @param {Object} state - Selection state
+     * @returns {Object} Selected parent
+     */
     function cw_chooseParent(state) {
       var curparent = state.curparent;
       var attributeIndex = state.i;
@@ -491,6 +598,9 @@ function createNormal(prop, generator) {
       return curparent
     }
 
+/**
+     * Initialize the random number generator for parent selection.
+     */
     function initializePick() {
       var curparent = 0;
 
@@ -569,6 +679,66 @@ function createNormal(prop, generator) {
       };
     }
 
+    /**
+     * Evolve to the next generation: select parents, crossover, mutate.
+     * @param {Object} config - Generation config (mutation rate, elite size).
+     * @param {number} generationSize - Population size.
+     * @param {Function} chooser - Parent selection function.
+     * @param {Object[]} lastGen - Parent generation.
+     * @param {Object} schema - Genetic schema template.
+     * @returns {Object[]} New generation.
+     */
+
+
+    /**
+     * Copy elite car definitions from the previous generation into the new one.
+     * Elite cars are cloned without modification.
+     * @param {Object} previousState - Previous generation state with .counter
+     * @param {Array} scores - Sorted car results (best first)
+     * @param {Object} config - Generation config with .championLength
+     * @returns {Object} State with updated counter and elite population
+     */
+    function copyEliteCars(previousState, scores, config) {
+      var newGeneration = [];
+      for (var k = 0; k < config.championLength; k++) {
+        var elite = cw_slimCarDefinition(scores[k].def);
+        elite.is_elite = true;
+        elite.index = k;
+        newGeneration.push(elite);
+      }
+      return {
+        counter: previousState.counter + 1,
+        generation: newGeneration,
+      };
+    }
+
+    /**
+     * Breed remaining slots in the new generation using tournament selection,
+     * crossover, and mutation.
+     * @param {Array} scores - Sorted car results (best first)
+     * @param {Array} newGeneration - Current new generation (will be mutated)
+     * @param {Object} config - Generation config with .generationSize and .selectFromAllParents
+     * @param {Array} parentList - Track of used parent pairs (prevents duplicates)
+     */
+    function breedRemaining(scores, newGeneration, config, parentList) {
+      for (var k = config.championLength; k < config.generationSize; k++) {
+        var parent1 = config.selectFromAllParents(scores, parentList);
+        var parent2 = parent1;
+        while (parent2 == parent1) {
+          parent2 = config.selectFromAllParents(scores, parentList, parent1);
+        }
+        var pair = [parent1, parent2]
+        parentList.push(pair);
+        var newborn = makeChild(config,
+          pair.map(function (parent) { return scores[parent].def; })
+        );
+        newborn = mutate(config, newborn);
+        newborn.is_elite = false;
+        newborn.index = k;
+        newGeneration.push(newborn);
+      }
+    }
+
     function nextGeneration(
       previousState,
       scores,
@@ -578,37 +748,27 @@ function createNormal(prop, generator) {
         generationSize = config.generationSize,
         selectFromAllParents = config.selectFromAllParents;
 
-      var newGeneration = [];
-      var newborn;
-      for (var k = 0; k < champion_length; k++) {
-        var elite = cw_slimCarDefinition(scores[k].def);
-        elite.is_elite = true;
-        elite.index = k;
-        newGeneration.push(elite);
-      }
+      // Copy elite cars first
+      var state = copyEliteCars(previousState, scores, config);
+      var newGeneration = state.generation;
+
+      // Breed remaining slots
       var parentList = [];
-      for (k = champion_length; k < generationSize; k++) {
-        var parent1 = selectFromAllParents(scores, parentList);
-        var parent2 = parent1;
-        while (parent2 == parent1) {
-          parent2 = selectFromAllParents(scores, parentList, parent1);
-        }
-        var pair = [parent1, parent2]
-        parentList.push(pair);
-        newborn = makeChild(config,
-          pair.map(function (parent) { return scores[parent].def; })
-        );
-        newborn = mutate(config, newborn);
-        newborn.is_elite = false;
-        newborn.index = k;
-        newGeneration.push(newborn);
-      }
+      breedRemaining(scores, newGeneration, config, parentList);
 
       return {
-        counter: previousState.counter + 1,
+        counter: state.counter,
         generation: newGeneration,
       };
     }
+
+
+    /**
+     * Create a child car from two parents via crossover, then mutate.
+     * @param {Object} config - Mutation config.
+     * @param {Object[]} parents - Two parent car definitions.
+     * @returns {Object} Child car definition.
+     */
 
 
     function makeChild(config, parents) {
@@ -654,6 +814,12 @@ function createNormal(prop, generator) {
     return out;
   }
 
+/**
+   * Extract chassis polygon data from a replay frame.
+   * @param {Object} replay - Replay data
+   * @param {number} frameIndex - Frame index
+   * @returns {Object|null} Chassis polygon data or null
+   */
   function ghost_get_chassis(c) {
     var gc = [];
 
@@ -677,6 +843,13 @@ function createNormal(prop, generator) {
     return gc;
   }
 
+/**
+   * Extract wheel circle data from a replay frame.
+   * @param {Object} replay - Replay data
+   * @param {number} frameIndex - Frame index
+   * @param {number} wheelIndex - Wheel index
+   * @returns {Object|null} Wheel circle data or null
+   */
   function ghost_get_wheel(w) {
     var gw = [];
 
@@ -718,6 +891,11 @@ function createNormal(prop, generator) {
       }
     }
 
+/**
+     * Create a ghost car from replay data for visualization.
+     * @param {Object} replay - Replay data with frame history
+     * @returns {Object} Ghost object for rendering
+     */
     function ghost_create_ghost() {
       if (!enable_ghost)
         return null;
@@ -729,6 +907,10 @@ function createNormal(prop, generator) {
       }
     }
 
+/**
+     * Reset ghost playback to frame 0.
+     * @param {Object} ghost - Ghost object to reset
+     */
     function ghost_reset_ghost(ghost) {
       if (!enable_ghost)
         return;
@@ -737,17 +919,30 @@ function createNormal(prop, generator) {
       ghost.frame = 0;
     }
 
+/**
+     * Pause ghost replay playback.
+     * @param {Object} ghost - Ghost object
+     */
     function ghost_pause(ghost) {
       if (ghost != null)
         ghost.old_frame = ghost.frame;
       ghost_reset_ghost(ghost);
     }
 
+/**
+     * Resume ghost replay playback.
+     * @param {Object} ghost - Ghost object
+     */
     function ghost_resume(ghost) {
       if (ghost != null)
         ghost.frame = ghost.old_frame;
     }
 
+/**
+     * Get current ghost position from replay.
+     * @param {Object} ghost - Ghost object
+     * @returns {{x: number, y: number}} Position
+     */
     function ghost_get_position(ghost) {
       if (!enable_ghost)
         return;
@@ -762,6 +957,12 @@ function createNormal(prop, generator) {
       return frame.pos;
     }
 
+/**
+     * Compare current car position to replay position for synchronization.
+     * @param {Object} ghost - Ghost object
+     * @param {Object} car - Current car state
+     * @returns {number} Position delta
+     */
     function ghost_compare_to_replay(replay, ghost, max) {
       if (!enable_ghost)
         return;
@@ -777,6 +978,11 @@ function createNormal(prop, generator) {
       }
     }
 
+/**
+     * Advance ghost by one replay frame.
+     * @param {Object} ghost - Ghost object
+     * @returns {boolean} Whether advancement succeeded
+     */
     function ghost_move_frame(ghost) {
       if (!enable_ghost)
         return;
@@ -789,6 +995,11 @@ function createNormal(prop, generator) {
         ghost.frame = ghost.replay.num_frames - 1;
     }
 
+/**
+     * Record a frame to the replay buffer.
+     * @param {Object} car - Car state to record
+     * @param {Array} replay - Replay buffer
+     */
     function ghost_add_replay_frame(replay, car) {
       if (!enable_ghost)
         return;
@@ -800,6 +1011,11 @@ function createNormal(prop, generator) {
       replay.num_frames++;
     }
 
+/**
+     * Draw the current ghost replay frame on canvas.
+     * @param {Object} ghost - Ghost object
+     * @param {Object} ctx - Canvas context
+     */
     function ghost_draw_frame(ctx, ghost, camera) {
       var zoom = camera.zoom;
       if (!enable_ghost)
@@ -836,6 +1052,12 @@ function createNormal(prop, generator) {
       ctx.stroke();
     }
 
+/**
+     * Draw a polygon for ghost rendering.
+     * @param {Object} ctx - Canvas context
+     * @param {Array} vertices - Polygon vertices
+     * @param {string} color - Fill color
+     */
     function ghost_draw_poly(ctx, vtx, n_vtx) {
       ctx.moveTo(vtx[0].x, vtx[0].y);
       for (var i = 1; i < n_vtx; i++) {
@@ -844,6 +1066,14 @@ function createNormal(prop, generator) {
       ctx.lineTo(vtx[0].x, vtx[0].y);
     }
 
+/**
+     * Draw a circle for ghost wheel rendering.
+     * @param {Object} ctx - Canvas context
+     * @param {number} x - Center X
+     * @param {number} y - Center Y
+     * @param {number} radius - Circle radius
+     * @param {string} color - Fill color
+     */
     function ghost_draw_circle(ctx, center, radius, angle) {
       ctx.beginPath();
       ctx.arc(center.x, center.y, radius, 0, 2 * Math.PI, true);
@@ -978,6 +1208,10 @@ function createNormal(prop, generator) {
   };
 
 
+/**
+   * Store current generation scores for graph plotting.
+   * @param {Array} cars - Array of car objects with scores
+   */
   function cw_storeGraphScores(lastState, cw_carScores, generationSize) {
     var maxGraphHistory = 2000;
     var maxTopScores = 100;
@@ -999,6 +1233,11 @@ function createNormal(prop, generator) {
     }
   }
 
+/**
+   * Trim history arrays to prevent memory leaks.
+   * @param {Array} arr - History array
+   * @param {number} max - Maximum length
+   */
   function cw_limitHistory(values, maxLength) {
     return values.length > maxLength ? values.slice(values.length - maxLength) : values;
   }
@@ -1009,6 +1248,12 @@ function createNormal(prop, generator) {
     }).slice(0, maxLength);
   }
 
+/**
+   * Plot a line on the statistics graph canvas.
+   * @param {Object} ctx - Canvas context
+   * @param {Array} data - Data points
+   * @param {string} color - Line color
+   */
   function cw_plotLine(state, graphctx, dataKey, color) {
     var data = state[dataKey];
     var graphsize = data.length;
@@ -1021,14 +1266,23 @@ function createNormal(prop, generator) {
     graphctx.stroke();
   }
 
+/**
+   * Plot the top score line (red) on the graph.
+   */
   function cw_plotTop(state, graphctx) {
     cw_plotLine(state, graphctx, "cw_graphTop", "#C83B3B");
   }
 
+/**
+   * Plot the elite average line (green) on the graph.
+   */
   function cw_plotElite(state, graphctx) {
     cw_plotLine(state, graphctx, "cw_graphElite", "#7BC74D");
   }
 
+/**
+   * Plot the generation average line (blue) on the graph.
+   */
   function cw_plotAverage(state, graphctx) {
     cw_plotLine(state, graphctx, "cw_graphAverage", "#3F72AF");
   }
@@ -1042,6 +1296,12 @@ function createNormal(prop, generator) {
     return sum / Math.floor(generationSize / 2);
   }
 
+/**
+   * Calculate the average of an array of scores.
+   * @param {number[]} scores - Array of numeric scores
+   * @param {number} generationSize - Population size for normalization
+   * @returns {number} Average score
+   */
   function cw_average(scores, generationSize) {
     var sum = 0;
     for (var k = 0; k < generationSize; k++) {
@@ -1050,6 +1310,9 @@ function createNormal(prop, generator) {
     return sum / generationSize;
   }
 
+/**
+   * Clear all graph canvases.
+   */
   function cw_clearGraphics(graphcanvas, graphctx, graphwidth, graphheight) {
     graphcanvas.width = graphcanvas.width;
     graphctx.translate(0, graphheight);
@@ -1066,6 +1329,9 @@ function createNormal(prop, generator) {
     graphctx.stroke();
   }
 
+/**
+   * List top N scores in the statistics table.
+   */
   function cw_listTopScores(elem, state) {
     var cw_topScores = state.cw_topScores;
     var ts = elem;
@@ -1097,22 +1363,17 @@ function createNormal(prop, generator) {
 
 
 
-  function drawCar(car_constants, myCar, camera, ctx) {
-    var camera_x = camera.pos.x;
+  /**
+   * Draw all wheels of a car, coloring by density.
+   * @param {Object} myCar - Car wrapper object
+   * @param {Object} camera - Camera with .pos.x and .zoom
+   * @param {CanvasRenderingContext2D} ctx - Canvas context
+   * @param {Object} car_constants - Car constants with wheelMinDensity and wheelDensityRange
+   */
+  function drawCarWheels(myCar, camera, ctx, car_constants) {
     var zoom = camera.zoom;
-
-    var wheelMinDensity = car_constants.wheelMinDensity
-    var wheelDensityRange = car_constants.wheelDensityRange
-
-    if (!myCar.alive) {
-      return;
-    }
-    var myCarPos = myCar.getPosition();
-
-    if (myCarPos.x < (camera_x - 5)) {
-      // too far behind, don't draw
-      return;
-    }
+    var wheelMinDensity = car_constants.wheelMinDensity;
+    var wheelDensityRange = car_constants.wheelDensityRange;
 
     ctx.strokeStyle = "#444";
     ctx.lineWidth = 1 / zoom;
@@ -1128,7 +1389,14 @@ function createNormal(prop, generator) {
         cw_drawCircle(ctx, b, s.m_p, s.m_radius, b.m_sweep.a, rgbcolor);
       }
     }
+  }
 
+  /**
+   * Draw the chassis polygon of a car. Elite cars get a blue tint.
+   * @param {Object} myCar - Car wrapper object
+   * @param {CanvasRenderingContext2D} ctx - Canvas context
+   */
+  function drawCarChassis(myCar, ctx) {
     if (myCar.is_elite) {
       ctx.strokeStyle = "#3F72AF";
       ctx.fillStyle = "#DBE2EF";
@@ -1140,12 +1408,29 @@ function createNormal(prop, generator) {
 
     var chassis = myCar.car.car.chassis;
 
-    for (f = chassis.GetFixtureList(); f; f = f.m_next) {
+    for (var f = chassis.GetFixtureList(); f; f = f.m_next) {
       var cs = f.GetShape();
       cw_drawVirtualPoly(ctx, chassis, cs.m_vertices, cs.m_vertexCount);
     }
     ctx.fill();
     ctx.stroke();
+  }
+
+  function drawCar(car_constants, myCar, camera, ctx) {
+    var camera_x = camera.pos.x;
+
+    if (!myCar.alive) {
+      return;
+    }
+    var myCarPos = myCar.getPosition();
+
+    if (myCarPos.x < (camera_x - 5)) {
+      // too far behind, don't draw
+      return;
+    }
+
+    drawCarWheels(myCar, camera, ctx, car_constants);
+    drawCarChassis(myCar, ctx);
   }
 
 
@@ -1158,6 +1443,15 @@ function createNormal(prop, generator) {
 
   /* ========================================================================= */
   /* === Car ================================================================= */
+  /**
+   * Car class constructor: manages physics state, score tracking, and rendering.
+   * @constructor
+   * @param {b2World} world - Box2D physics world.
+   * @param {Object} car_def - Genetic definition of the car.
+   * @param {Object} constants - Car physics constants.
+   */
+
+
   var cw_Car = function () {
     this.__constructor.apply(this, arguments);
   }
@@ -1235,6 +1529,12 @@ function createNormal(prop, generator) {
   
   */
 
+  /**
+   * Initialize the physics scene: create world, floor tiles, and starting car.
+   * @param {Object} world_def - World configuration (gravity, seed, dimensions).
+   */
+
+
   function setupScene(world_def) {
 
     var world = new b2World(world_def.gravity, world_def.doSleep);
@@ -1262,6 +1562,11 @@ function createNormal(prop, generator) {
     };
   }
 
+/**
+   * Create the terrain/floor from world seed data using Box2D chain shapes.
+   * @param {Object} world - Box2D world
+   * @param {Array} seed - World seed data
+   */
   function cw_createFloor(world, floorseed, dimensions, maxFloorTiles, mutable_floor) {
     var last_tile = null;
     var tile_position = new b2Vec2(-5, 0);
@@ -1287,6 +1592,13 @@ function createNormal(prop, generator) {
   }
 
 
+/**
+   * Create a single floor tile (chain edge) from seed data.
+   * @param {Object} world - Box2D world
+   * @param {number} x - X position
+   * @param {number} y - Y position
+   * @returns {Object} Box2D body for the floor tile
+   */
   function cw_createFloorTile(world, dim, position, angle) {
     var body_def = new b2BodyDef();
 
@@ -1312,6 +1624,13 @@ function createNormal(prop, generator) {
     return body;
   }
 
+/**
+   * Rotate floor tile coordinates around a center point.
+   * @param {{x: number, y: number}} coords - Original coordinates
+   * @param {{x: number, y: number}} center - Rotation center
+   * @param {number} angle - Rotation angle in radians
+   * @returns {{x: number, y: number}} Rotated coordinates
+   */
   function cw_rotateFloorTile(coords, center, angle) {
     return coords.map(function (coord) {
       return {
@@ -1325,6 +1644,14 @@ function createNormal(prop, generator) {
   /* -------------------------------------------------------------------------
    * world/run.js
    * ------------------------------------------------------------------------- */
+  /**
+   * Main simulation runner: iterate physics steps, update cars, check round end.
+   * @param {Object} world_def - World configuration.
+   * @param {Object[]} defs - Array of car definitions.
+   * @param {Object} listeners - Callbacks (onStep, onEnd, etc).
+   */
+
+
   function worldRun(world_def, defs, listeners) {
     if (world_def.mutable_floor) {
       // GHOST DISABLED
@@ -1343,6 +1670,38 @@ function createNormal(prop, generator) {
       };
     });
     var alivecars = cars;
+
+    /**
+     * Update a single car's state and return its run status.
+     * Status 0 = still alive, non-zero = finished.
+     * @param {Object} car - Car object with .car and .state
+     * @param {Object} world_def - World definition
+     * @param {Object} listeners - Car event listeners
+     * @returns {number} Run status code
+     */
+    function updateCarStep(car, world_def, listeners) {
+      car.state = carRun.updateState(
+        world_def, car.car, car.state
+      );
+      var status = carRun.getStatus(car.state, world_def);
+      listeners.carStep(car);
+      return status;
+    }
+
+    /**
+     * Remove a dead car's Box2D bodies from the world.
+     * Destroys the chassis and all wheels.
+     * @param {Object} car - Car object with .car (contains chassis and wheels)
+     * @param {Object} world - Box2D world instance
+     */
+    function cleanupDeadCar(car, world) {
+      var worldCar = car.car;
+      world.DestroyBody(worldCar.chassis);
+      for (var w = 0; w < worldCar.wheels.length; w++) {
+        world.DestroyBody(worldCar.wheels[w]);
+      }
+    }
+
     return {
       scene: scene,
       cars: cars,
@@ -1353,25 +1712,13 @@ function createNormal(prop, generator) {
         scene.world.Step(1 / world_def.box2dfps, 20, 20);
         listeners.preCarStep();
         alivecars = alivecars.filter(function (car) {
-          car.state = carRun.updateState(
-            world_def, car.car, car.state
-          );
-          var status = carRun.getStatus(car.state, world_def);
-          listeners.carStep(car);
+          var status = updateCarStep(car, world_def, listeners);
           if (status === 0) {
             return true;
           }
           car.score = carRun.calculateScore(car.state, world_def);
           listeners.carDeath(car);
-
-          var world = scene.world;
-          var worldCar = car.car;
-          world.DestroyBody(worldCar.chassis);
-
-          for (var w = 0; w < worldCar.wheels.length; w++) {
-            world.DestroyBody(worldCar.wheels[w]);
-          }
-
+          cleanupDeadCar(car, scene.world);
           return false;
         })
         if (alivecars.length === 0) {
@@ -1482,6 +1829,9 @@ function createNormal(prop, generator) {
     cw_graphTop: [],
   };
 
+/**
+   * Reset all graph tracking state (history arrays, scores).
+   */
   function resetGraphState() {
     graphState = {
       cw_topScores: [],
@@ -1523,6 +1873,11 @@ function createNormal(prop, generator) {
     };
   })();
 
+/**
+   * Update the distance and height display on the statistics table.
+   * @param {number} distance - Current best distance
+   * @param {number} height - Current height
+   */
   function showDistance(distance, height) {
     distanceMeter.innerHTML = distance + " meters<br />";
     heightMeter.innerHTML = height + " meters";
@@ -1532,6 +1887,11 @@ function createNormal(prop, generator) {
     }
   }
 
+/**
+   * Update the server sync status indicator.
+   * @param {string} text - Status message
+   * @param {string} state - CSS state class
+   */
   function serverSetStatus(text, state) {
     if (!serverSync.statusElem) {
       return;
@@ -1540,6 +1900,11 @@ function createNormal(prop, generator) {
     serverSync.statusElem.className = "server-status" + (state ? " " + state : "");
   }
 
+/**
+   * Normalize graph state object to a consistent format.
+   * @param {Object} input - Raw state object
+   * @returns {Object} Normalized state
+   */
   function normalizeGraphState(input) {
     input = input || {};
     return {
@@ -1550,6 +1915,12 @@ function createNormal(prop, generator) {
     };
   }
 
+/**
+   * Build a snapshot of current simulation progress for saving.
+   * @param {string} reason - Reason for saving (manual, checkpoint, etc.)
+   * @param {Object} options - Snapshot options
+   * @returns {Object} Progress snapshot
+   */
   function buildProgressSnapshot(reason, options) {
     options = options || {};
     var bestScore = (graphState.cw_topScores || [])[0] || null;
@@ -1574,6 +1945,12 @@ function createNormal(prop, generator) {
     };
   }
 
+/**
+   * Apply a saved progress snapshot to restore simulation state.
+   * @param {Object} snapshot - Saved progress data
+   * @param {Object} options - Apply options
+   * @returns {boolean} Whether restoration succeeded
+   */
   function applyProgressSnapshot(snapshot, options) {
     options = options || {};
     if (!snapshot || !Array.isArray(snapshot.savedGeneration)) {
@@ -1621,6 +1998,10 @@ function createNormal(prop, generator) {
     return true;
   }
 
+/**
+   * Save progress snapshot to browser localStorage.
+   * @param {Object} snapshot - Progress snapshot
+   */
   function saveProgressToLocal(snapshot) {
     localStorage.cw_savedGeneration = JSON.stringify(snapshot.savedGeneration);
     localStorage.cw_genCounter = snapshot.generation;
@@ -1630,6 +2011,10 @@ function createNormal(prop, generator) {
     localStorage.cw_floorSeed = snapshot.floorSeed;
   }
 
+/**
+   * Load progress snapshot from browser localStorage.
+   * @returns {Object|null} Saved snapshot or null
+   */
   function loadProgressFromLocal() {
     if (typeof localStorage.cw_savedGeneration == 'undefined' || localStorage.cw_savedGeneration == null) {
       return null;
@@ -1646,6 +2031,11 @@ function createNormal(prop, generator) {
     };
   }
 
+/**
+   * Fetch the latest progress snapshot from the server API.
+   * @param {Object} options - Fetch options
+   * @returns {Promise<Object>} Server snapshot
+   */
   function serverLoadLatest(options) {
     options = options || {};
     if (!serverSync.enabled) {
@@ -1688,6 +2078,9 @@ function createNormal(prop, generator) {
     });
   }
 
+/**
+   * Apply a server snapshot that was fetched asynchronously.
+   */
   function applyPendingServerSnapshot() {
     var snapshot = serverSync.pendingSnapshot;
     if (!snapshot) {
@@ -1708,6 +2101,10 @@ function createNormal(prop, generator) {
     return false;
   }
 
+/**
+   * Queue a progress snapshot for upload to the server.
+   * @param {string} reason - Save reason
+   */
   function queueServerSave(reason) {
     if (!serverSync.enabled || !serverSync.isRunner) {
       return;
@@ -1744,6 +2141,9 @@ function createNormal(prop, generator) {
     });
   }
 
+/**
+   * Start periodic polling for server-side progress updates.
+   */
   function startServerPolling() {
     if (!serverSync.enabled || serverSync.isRunner || serverSync.pollTimer) {
       return;
@@ -1756,6 +2156,9 @@ function createNormal(prop, generator) {
     }, serverSync.pollMs);
   }
 
+/**
+   * Start autonomous simulation runner (auto-advances generations).
+   */
   function startAutonomousRunner() {
     if (serverSync.runnerStarted) {
       return;
@@ -1773,6 +2176,9 @@ function createNormal(prop, generator) {
     serverSetStatus("Server runner: evolving generation " + generationState.counter, "running");
   }
 
+/**
+   * Initialize server synchronization subsystem.
+   */
   function initServerSync() {
     if (!serverSync.enabled) {
       serverSetStatus("Server sync: disabled", "warning");
@@ -1827,6 +2233,11 @@ function createNormal(prop, generator) {
   /* ========================================================================= */
   /* ==== Drawing ============================================================ */
 
+  /**
+   * Render the main simulation screen: cars, floor, ghost replay, minimap.
+   */
+
+
   function cw_drawScreen() {
     var floorTiles = currentRunner.scene.floorTiles;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -1843,6 +2254,10 @@ function createNormal(prop, generator) {
     ctx.restore();
   }
 
+/**
+   * Calculate minimap camera viewport transformation.
+   * @returns {Object} Camera transform data
+   */
   function cw_minimapCamera() {
     var camera_x = camera.pos.x
     var camera_y = camera.pos.y
@@ -1850,6 +2265,10 @@ function createNormal(prop, generator) {
     minimapcamera.top = Math.round((31 - camera_y) * minimapscale) + "px";
   }
 
+/**
+   * Set camera follow target (leader car index).
+   * @param {number} k - Car index to follow
+   */
   function cw_setCameraTarget(k) {
     if (k === -1) {
       camera.target = -1;
@@ -1868,6 +2287,9 @@ function createNormal(prop, generator) {
     }
   }
 
+/**
+   * Update camera position to follow the target car.
+   */
   function cw_setCameraPosition() {
     var cameraTargetPosition
     if (camera.target !== -1 && carMap.has(camera.target)) {
@@ -1883,6 +2305,9 @@ function createNormal(prop, generator) {
     cw_minimapCamera();
   }
 
+/**
+   * Draw the ghost replay overlay on the main canvas.
+   */
   function cw_drawGhostReplay() {
     var floorTiles = currentRunner.scene.floorTiles;
     var carPosition = ghost_get_position(ghost);
@@ -1918,6 +2343,9 @@ function createNormal(prop, generator) {
   }
 
 
+/**
+   * Draw all active cars on the main canvas.
+   */
   function cw_drawCars() {
     var cw_carArray = Array.from(carMap.values());
     for (var k = (cw_carArray.length - 1); k >= 0; k--) {
@@ -1926,6 +2354,10 @@ function createNormal(prop, generator) {
     }
   }
 
+/**
+   * Toggle individual car visibility on/off.
+   * @param {number} carIndex - Car index to toggle
+   */
   function toggleDisplay() {
     canvas.width = canvas.width;
     if (doDraw) {
@@ -1945,6 +2377,9 @@ function createNormal(prop, generator) {
     }
   }
 
+/**
+   * Draw the minimap overview showing car positions and terrain.
+   */
   function cw_drawMiniMap() {
     var floorTiles = currentRunner.scene.floorTiles;
     var last_tile = null;
@@ -2014,6 +2449,9 @@ function createNormal(prop, generator) {
     }
   }
 
+/**
+   * Execute a single simulation step (physics update + status check).
+   */
   function simulationStep() {
     currentRunner.step();
     showDistance(
@@ -2021,6 +2459,12 @@ function createNormal(prop, generator) {
       Math.round(leaderPosition.y * 100) / 100
     );
   }
+
+  /**
+   * Main animation loop: render frame, advance simulation step.
+   * Called via requestAnimationFrame.
+   */
+
 
   function gameLoop() {
     loops = 0;
@@ -2034,6 +2478,10 @@ function createNormal(prop, generator) {
     if (!cw_paused) cw_animationFrameId = window.requestAnimationFrame(gameLoop);
   }
 
+/**
+   * Update the car information panel with current car data.
+   * @param {Object} carInfo - Car state information
+   */
   function updateCarUI(carInfo) {
     var k = carInfo.index;
     var car = carMap.get(carInfo);
@@ -2048,6 +2496,10 @@ function createNormal(prop, generator) {
     }
   }
 
+/**
+   * Find the leading car (highest score in current generation).
+   * @returns {Object} Leader car data
+   */
   function cw_findLeader() {
     var lead = 0;
     carMap.forEach(function(cwCar, carInfo) {
@@ -2063,6 +2515,9 @@ function createNormal(prop, generator) {
     });
   }
 
+/**
+   * Toggle fast-forward mode (multiple physics steps per frame).
+   */
   function fastForward() {
     var gen = generationState.counter;
     while (gen === generationState.counter) {
@@ -2070,6 +2525,10 @@ function createNormal(prop, generator) {
     }
   }
 
+/**
+   * Clean up resources after a simulation round completes.
+   * @param {Object} results - Round results
+   */
   function cleanupRound(results) {
 
     results.sort(function (a, b) {
@@ -2088,6 +2547,10 @@ function createNormal(prop, generator) {
     );
   }
 
+/**
+   * Start a new simulation round (new generation or restart).
+   * @param {Object} results - Previous round results
+   */
   function cw_newRound(results) {
     camera.pos.x = camera.pos.y = 0;
     cw_setCameraTarget(-1);
@@ -2114,6 +2577,11 @@ function createNormal(prop, generator) {
     queueServerSave("generation");
   }
 
+  /**
+   * Start the simulation: initialize state, begin game loop, start server sync.
+   */
+
+
   function cw_startSimulation() {
     cw_paused = false;
     cw_animationFrameId = window.requestAnimationFrame(gameLoop);
@@ -2127,12 +2595,18 @@ function createNormal(prop, generator) {
     }
   }
 
+/**
+   * Remove all car bodies and fixtures from the Box2D world.
+   */
   function cw_clearPopulationWorld() {
     carMap.forEach(function (car) {
       car.kill(currentRunner, world_def);
     });
   }
 
+/**
+   * Reset population-related UI elements to initial state.
+   */
   function cw_resetPopulationUI() {
     document.getElementById("generation").innerHTML = "";
     document.getElementById("cars").innerHTML = "";
@@ -2142,6 +2616,9 @@ function createNormal(prop, generator) {
     resetGraphState();
   }
 
+/**
+   * Reset the entire world (physics, UI, population).
+   */
   function cw_resetWorld() {
     doDraw = true;
     cw_stopSimulation();
@@ -2163,6 +2640,9 @@ function createNormal(prop, generator) {
     cw_startSimulation();
   }
 
+/**
+   * Set up the car information panel UI with click handlers.
+   */
   function setupCarUI() {
     currentRunner.cars.map(function (carInfo) {
       var car = new cw_Car(carInfo, carMap);
@@ -2203,10 +2683,16 @@ function createNormal(prop, generator) {
     cw_startSimulation();
   })
 
+/**
+   * Trigger manual save of current progress to localStorage.
+   */
   function saveProgress() {
     saveProgressToLocal(buildProgressSnapshot("manual", { includeGhost: true }));
   }
 
+/**
+   * Restore simulation from the last saved progress.
+   */
   function restoreProgress() {
     var snapshot = loadProgressFromLocal();
     if (!snapshot) {
@@ -2220,6 +2706,9 @@ function createNormal(prop, generator) {
     cw_confirmResetWorld()
   })
 
+/**
+   * Confirm and execute world reset after user click.
+   */
   function cw_confirmResetWorld() {
     if (confirm('Really reset world?')) {
       cw_resetWorld();
@@ -2231,16 +2720,25 @@ function createNormal(prop, generator) {
   // ghost replay stuff
 
 
+/**
+   * Pause the simulation (stop game loop).
+   */
   function cw_pauseSimulation() {
     cw_stopSimulation();
     ghost_pause(ghost);
   }
 
+/**
+   * Resume a paused simulation.
+   */
   function cw_resumeSimulation() {
     ghost_resume(ghost);
     cw_startSimulation();
   }
 
+/**
+   * Start ghost replay mode (show best car replay).
+   */
   function cw_startGhostReplay() {
     if (!doDraw) {
       toggleDisplay();
@@ -2249,6 +2747,9 @@ function createNormal(prop, generator) {
     cw_ghostReplayInterval = setInterval(cw_drawGhostReplay, Math.round(1000 / screenfps));
   }
 
+/**
+   * Stop ghost replay mode and resume simulation.
+   */
   function cw_stopGhostReplay() {
     clearInterval(cw_ghostReplayInterval);
     cw_ghostReplayInterval = null;
@@ -2262,6 +2763,10 @@ function createNormal(prop, generator) {
     cw_toggleGhostReplay(e.target)
   })
 
+/**
+   * Toggle ghost replay on/off via button click.
+   * @param {HTMLButtonElement} button - Clicked button element
+   */
   function cw_toggleGhostReplay(button) {
     if (cw_ghostReplayInterval == null) {
       cw_startGhostReplay();
@@ -2274,6 +2779,11 @@ function createNormal(prop, generator) {
   // ghost replay stuff END
 
   // initial stuff, only called once (hopefully)
+  /**
+   * Application entry point: initialize all systems and start the first simulation.
+   */
+
+
   function cw_init() {
     // clone silver dot and health bar
     var mmm = document.getElementsByName('minimapmarker')[0];
@@ -2307,6 +2817,12 @@ function createNormal(prop, generator) {
 
   }
 
+/**
+   * Calculate mouse coordinates relative to canvas element.
+   * @param {MouseEvent} event - Mouse event
+   * @param {HTMLCanvasElement} element - Target canvas
+   * @returns {{x: number, y: number}} Relative coordinates
+   */
   function relMouseCoords(event, element) {
     var totalOffsetX = 0;
     var totalOffsetY = 0;
@@ -2355,43 +2871,52 @@ function createNormal(prop, generator) {
   }
 
 
-  document.querySelector("#mutationrate").addEventListener("change", function (e) {
-    var elem = e.target
-    cw_setMutation(elem.options[elem.selectedIndex].value)
-  })
+  /**
+   * Bind a select element's change event to a setter function.
+   * Eliminates repetitive addEventListener boilerplate for dropdown controls.
+   * @param {string} selector - CSS selector for the select element
+   * @param {Function} setterFn - Function to call with the selected value
+   */
+  function bindSelectToSetter(selector, setterFn) {
+    document.querySelector(selector).addEventListener("change", function (e) {
+      setterFn(e.target.options[e.target.selectedIndex].value)
+    })
+  }
 
-  document.querySelector("#mutationsize").addEventListener("change", function (e) {
-    var elem = e.target
-    cw_setMutationRange(elem.options[elem.selectedIndex].value)
-  })
+  bindSelectToSetter("#mutationrate", cw_setMutation);
+  bindSelectToSetter("#mutationsize", cw_setMutationRange);
+  bindSelectToSetter("#floor", cw_setMutableFloor);
+  bindSelectToSetter("#gravity", cw_setGravity);
+  bindSelectToSetter("#elitesize", cw_setEliteSize);
 
-  document.querySelector("#floor").addEventListener("change", function (e) {
-    var elem = e.target
-    cw_setMutableFloor(elem.options[elem.selectedIndex].value)
-  });
-
-  document.querySelector("#gravity").addEventListener("change", function (e) {
-    var elem = e.target
-    cw_setGravity(elem.options[elem.selectedIndex].value)
-  })
-
-  document.querySelector("#elitesize").addEventListener("change", function (e) {
-    var elem = e.target
-    cw_setEliteSize(elem.options[elem.selectedIndex].value)
-  })
-
+/**
+   * Set the mutation rate for the genetic algorithm.
+   * @param {number} mutation - Mutation rate percentage
+   */
   function cw_setMutation(mutation) {
     generationConfig.constants.gen_mutation = parseFloat(mutation);
   }
 
+/**
+   * Set the mutation size/range for gene mutation.
+   * @param {number} range - Mutation range percentage
+   */
   function cw_setMutationRange(range) {
     generationConfig.constants.mutation_range = parseFloat(range);
   }
 
+/**
+   * Set floor mutation mode (fixed vs mutable terrain).
+   * @param {string} choice - 'fixed' or 'mutable'
+   */
   function cw_setMutableFloor(choice) {
     world_def.mutable_floor = (choice == 1);
   }
 
+/**
+   * Set gravity value for the physics simulation.
+   * @param {string} choice - Gravity preset name
+   */
   function cw_setGravity(choice) {
     world_def.gravity = new b2Vec2(0.0, -parseFloat(choice));
     var world = currentRunner.scene.world
@@ -2401,6 +2926,10 @@ function createNormal(prop, generator) {
     }
   }
 
+/**
+   * Set the number of elite clones carried to the next generation.
+   * @param {number} clones - Number of elite clones
+   */
   function cw_setEliteSize(clones) {
     generationConfig.constants.championLength = parseInt(clones, 10);
   }
