@@ -796,303 +796,7 @@ function createNormal(prop, generator) {
   })();
 
 
-  /* -------------------------------------------------------------------------
-   * ghost/car-to-ghost.js
-   * ------------------------------------------------------------------------- */
-
-  function ghost_get_frame(car) {
-    var out = {
-      chassis: ghost_get_chassis(car.chassis),
-      wheels: [],
-      pos: { x: car.chassis.GetPosition().x, y: car.chassis.GetPosition().y }
-    };
-
-    for (var i = 0; i < car.wheels.length; i++) {
-      out.wheels[i] = ghost_get_wheel(car.wheels[i]);
-    }
-
-    return out;
-  }
-
-/**
-   * Extract chassis polygon data from a replay frame.
-   * @param {Object} replay - Replay data
-   * @param {number} frameIndex - Frame index
-   * @returns {Object|null} Chassis polygon data or null
-   */
-  function ghost_get_chassis(c) {
-    var gc = [];
-
-    for (var f = c.GetFixtureList(); f; f = f.m_next) {
-      var s = f.GetShape();
-
-      var p = {
-        vtx: [],
-        num: 0
-      }
-
-      p.num = s.m_vertexCount;
-
-      for (var i = 0; i < s.m_vertexCount; i++) {
-        p.vtx.push(c.GetWorldPoint(s.m_vertices[i]));
-      }
-
-      gc.push(p);
-    }
-
-    return gc;
-  }
-
-/**
-   * Extract wheel circle data from a replay frame.
-   * @param {Object} replay - Replay data
-   * @param {number} frameIndex - Frame index
-   * @param {number} wheelIndex - Wheel index
-   * @returns {Object|null} Wheel circle data or null
-   */
-  function ghost_get_wheel(w) {
-    var gw = [];
-
-    for (var f = w.GetFixtureList(); f; f = f.m_next) {
-      var s = f.GetShape();
-
-      var c = {
-        pos: w.GetWorldPoint(s.m_p),
-        rad: s.m_radius,
-        ang: w.m_sweep.a
-      }
-
-      gw.push(c);
-    }
-
-    return gw;
-  }
-
-
-  /* -------------------------------------------------------------------------
-   * ghost/index.js
-   * ------------------------------------------------------------------------- */
-  var ghost_fns = (function () {
-    var enable_ghost = true;
-
-
-
-
-
-
-
-    function ghost_create_replay() {
-      if (!enable_ghost)
-        return null;
-
-      return {
-        num_frames: 0,
-        frames: [],
-      }
-    }
-
-/**
-     * Create a ghost car from replay data for visualization.
-     * @param {Object} replay - Replay data with frame history
-     * @returns {Object} Ghost object for rendering
-     */
-    function ghost_create_ghost() {
-      if (!enable_ghost)
-        return null;
-
-      return {
-        replay: null,
-        frame: 0,
-        dist: -100
-      }
-    }
-
-/**
-     * Reset ghost playback to frame 0.
-     * @param {Object} ghost - Ghost object to reset
-     */
-    function ghost_reset_ghost(ghost) {
-      if (!enable_ghost)
-        return;
-      if (ghost == null)
-        return;
-      ghost.frame = 0;
-    }
-
-/**
-     * Pause ghost replay playback.
-     * @param {Object} ghost - Ghost object
-     */
-    function ghost_pause(ghost) {
-      if (ghost != null)
-        ghost.old_frame = ghost.frame;
-      ghost_reset_ghost(ghost);
-    }
-
-/**
-     * Resume ghost replay playback.
-     * @param {Object} ghost - Ghost object
-     */
-    function ghost_resume(ghost) {
-      if (ghost != null)
-        ghost.frame = ghost.old_frame;
-    }
-
-/**
-     * Get current ghost position from replay.
-     * @param {Object} ghost - Ghost object
-     * @returns {{x: number, y: number}} Position
-     */
-    function ghost_get_position(ghost) {
-      if (!enable_ghost)
-        return;
-      if (ghost == null)
-        return;
-      if (ghost.frame < 0)
-        return;
-      if (ghost.replay == null)
-        return;
-      var frame = ghost.replay.frames[ghost.frame];
-      if (!frame) return;
-      return frame.pos;
-    }
-
-/**
-     * Compare current car position to replay position for synchronization.
-     * @param {Object} ghost - Ghost object
-     * @param {Object} car - Current car state
-     * @returns {number} Position delta
-     */
-    function ghost_compare_to_replay(replay, ghost, max) {
-      if (!enable_ghost)
-        return;
-      if (ghost == null)
-        return;
-      if (replay == null)
-        return;
-
-      if (ghost.dist < max) {
-        ghost.replay = replay;
-        ghost.dist = max;
-        ghost.frame = 0;
-      }
-    }
-
-/**
-     * Advance ghost by one replay frame.
-     * @param {Object} ghost - Ghost object
-     * @returns {boolean} Whether advancement succeeded
-     */
-    function ghost_move_frame(ghost) {
-      if (!enable_ghost)
-        return;
-      if (ghost == null)
-        return;
-      if (ghost.replay == null)
-        return;
-      ghost.frame++;
-      if (ghost.frame >= ghost.replay.num_frames)
-        ghost.frame = ghost.replay.num_frames - 1;
-    }
-
-/**
-     * Record a frame to the replay buffer.
-     * @param {Object} car - Car state to record
-     * @param {Array} replay - Replay buffer
-     */
-    function ghost_add_replay_frame(replay, car) {
-      if (!enable_ghost)
-        return;
-      if (replay == null)
-        return;
-
-      var frame = ghost_get_frame(car);
-      replay.frames.push(frame);
-      replay.num_frames++;
-    }
-
-/**
-     * Draw the current ghost replay frame on canvas.
-     * @param {Object} ghost - Ghost object
-     * @param {Object} ctx - Canvas context
-     */
-    function ghost_draw_frame(ctx, ghost, camera) {
-      var zoom = camera.zoom;
-      if (!enable_ghost)
-        return;
-      if (ghost == null)
-        return;
-      if (ghost.frame < 0)
-        return;
-      if (ghost.replay == null)
-        return;
-
-      var frame = ghost.replay.frames[ghost.frame];
-      if (!frame) return;
-
-      // wheel style
-      ctx.fillStyle = "#eee";
-      ctx.strokeStyle = "#aaa";
-      ctx.lineWidth = 1 / zoom;
-
-      for (var i = 0; i < frame.wheels.length; i++) {
-        for (var w in frame.wheels[i]) {
-          ghost_draw_circle(ctx, frame.wheels[i][w].pos, frame.wheels[i][w].rad, frame.wheels[i][w].ang);
-        }
-      }
-
-      // chassis style
-      ctx.strokeStyle = "#aaa";
-      ctx.fillStyle = "#eee";
-      ctx.lineWidth = 1 / zoom;
-      ctx.beginPath();
-      for (var c in frame.chassis)
-        ghost_draw_poly(ctx, frame.chassis[c].vtx, frame.chassis[c].num);
-      ctx.fill();
-      ctx.stroke();
-    }
-
-/**
-     * Draw a polygon for ghost rendering.
-     * @param {Object} ctx - Canvas context
-     * @param {Array} vertices - Polygon vertices
-     * @param {string} color - Fill color
-     */
-    function ghost_draw_poly(ctx, vtx, n_vtx) {
-      ctx.moveTo(vtx[0].x, vtx[0].y);
-      for (var i = 1; i < n_vtx; i++) {
-        ctx.lineTo(vtx[i].x, vtx[i].y);
-      }
-      ctx.lineTo(vtx[0].x, vtx[0].y);
-    }
-
-/**
-     * Draw a circle for ghost wheel rendering.
-     * @param {Object} ctx - Canvas context
-     * @param {number} x - Center X
-     * @param {number} y - Center Y
-     * @param {number} radius - Circle radius
-     * @param {string} color - Fill color
-     */
-    function ghost_draw_circle(ctx, center, radius, angle) {
-      ctx.beginPath();
-      ctx.arc(center.x, center.y, radius, 0, 2 * Math.PI, true);
-
-      ctx.moveTo(center.x, center.y);
-      ctx.lineTo(center.x + radius * Math.cos(angle), center.y + radius * Math.sin(angle));
-
-      ctx.fill();
-      ctx.stroke();
-    }
-
-    return {
-      ghost_create_replay: ghost_create_replay, ghost_create_ghost: ghost_create_ghost,
-      ghost_pause: ghost_pause, ghost_resume: ghost_resume,
-      ghost_get_position: ghost_get_position, ghost_compare_to_replay: ghost_compare_to_replay,
-      ghost_move_frame: ghost_move_frame, ghost_add_replay_frame: ghost_add_replay_frame,
-      ghost_draw_frame: ghost_draw_frame, ghost_reset_ghost: ghost_reset_ghost
-    };
-  })();
+  /* Ghost module is now loaded from src/ghost.js */
 
 
   /* -------------------------------------------------------------------------
@@ -2261,20 +1965,29 @@ function createNormal(prop, generator) {
   /* ==== Drawing ============================================================ */
 
   /**
+   * Apply camera transform to canvas context: clear, save, translate, scale.
+   * Caller is responsible for {@code ctx.restore()}.
+   * @param {CanvasRenderingContext2D} ctx - Canvas 2D context
+   * @param {number} posX - World X position
+   * @param {number} posY - World Y position
+   * @param {number} zoom - Zoom level
+   */
+  function applyCameraTransform(ctx, posX, posY, zoom) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.translate(200 - (posX * zoom), 200 + (posY * zoom));
+    ctx.scale(zoom, -zoom);
+  }
+
+  /**
    * Render the main simulation screen: cars, floor, ghost replay, minimap.
    */
 
 
   function cw_drawScreen() {
     var floorTiles = currentRunner.scene.floorTiles;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.save();
     cw_setCameraPosition();
-    var camera_x = camera.pos.x;
-    var camera_y = camera.pos.y;
-    var zoom = camera.zoom;
-    ctx.translate(200 - (camera_x * zoom), 200 + (camera_y * zoom));
-    ctx.scale(zoom, -zoom);
+    applyCameraTransform(ctx, camera.pos.x, camera.pos.y, camera.zoom);
     cw_drawFloor(ctx, camera, floorTiles);
     ghost_draw_frame(ctx, ghost, camera);
     cw_drawCars();
@@ -2339,12 +2052,8 @@ function createNormal(prop, generator) {
     var floorTiles = currentRunner.scene.floorTiles;
     var carPosition = ghost_get_position(ghost);
     if (!carPosition) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.save();
       cw_setCameraPosition();
-      var zoom = camera.zoom;
-      ctx.translate(200 - (camera.pos.x * zoom), 200 + (camera.pos.y * zoom));
-      ctx.scale(zoom, -zoom);
+      applyCameraTransform(ctx, camera.pos.x, camera.pos.y, camera.zoom);
       cw_drawFloor(ctx, camera, floorTiles);
       ctx.restore();
       return;
@@ -2356,13 +2065,7 @@ function createNormal(prop, generator) {
       Math.round(carPosition.x * 100) / 100,
       Math.round(carPosition.y * 100) / 100
     );
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.save();
-    ctx.translate(
-      200 - (carPosition.x * camera.zoom),
-      200 + (carPosition.y * camera.zoom)
-    );
-    ctx.scale(camera.zoom, -camera.zoom);
+    applyCameraTransform(ctx, carPosition.x, carPosition.y, camera.zoom);
     ghost_draw_frame(ctx, ghost, camera);
     ghost_move_frame(ghost);
     cw_drawFloor(ctx, camera, floorTiles);
@@ -2405,18 +2108,26 @@ function createNormal(prop, generator) {
   }
 
 /**
-   * Draw the minimap overview showing car positions and terrain.
+   * Update minimap fog-of-war bar based on floor change state.
+   * Called whenever floor seed changes to reveal the full terrain.
    */
-  function cw_drawMiniMap() {
-    var floorTiles = currentRunner.scene.floorTiles;
-    var last_tile = null;
-    var tile_position = new b2Vec2(-5, 0);
+  function cw_updateMiniMapFog() {
     var floorChanged = (lastFloorSeed !== world_def.floorseed);
     lastFloorSeed = world_def.floorseed;
     if (floorChanged) {
       minimapfogdistance = 0;
       fogdistance.width = "800px";
     }
+  }
+
+/**
+   * Draw the minimap terrain floor outline.
+   */
+  function cw_drawMiniMapFloor() {
+    var floorTiles = currentRunner.scene.floorTiles;
+    var last_tile = null;
+    var tile_position = new b2Vec2(-5, 0);
+
     minimapcanvas.width = minimapcanvas.width;
     minimapctx.strokeStyle = "#3F72AF";
     minimapctx.beginPath();
@@ -2429,6 +2140,14 @@ function createNormal(prop, generator) {
       minimapctx.lineTo((tile_position.x + 5) * minimapscale, (-tile_position.y + 35) * minimapscale);
     }
     minimapctx.stroke();
+  }
+
+/**
+   * Draw the minimap overview showing car positions and terrain.
+   */
+  function cw_drawMiniMap() {
+    cw_updateMiniMapFog();
+    cw_drawMiniMapFloor();
   }
 
   /* ==== END Drawing ======================================================== */
@@ -2575,33 +2294,61 @@ function createNormal(prop, generator) {
   }
 
 /**
-   * Start a new simulation round (new generation or restart).
-   * @param {Object} results - Previous round results
+   * Reset camera to origin and deselect follow target.
    */
-  function cw_newRound(results) {
+  function cw_resetCameraForRound() {
     camera.pos.x = camera.pos.y = 0;
     cw_setCameraTarget(-1);
+  }
 
-    // Reset the Math.random seed to true randomness before generating the next generation.
-    // If we don't do this, the mutations will use the exact same deterministic pseudorandom
-    // sequence that the physics engine used for the floor, resulting in exact identical clones
-    // every generation if the parents happen to have the same scores.
+/**
+   * Compute the next generation from results and current generation config.
+   * @param {Object} results - Previous round results
+   */
+  function cw_generateNextGeneration(results) {
+    // Reset Math.random seed to true randomness before mutating.
+    // If we don't do this, the mutations will use the exact same deterministic
+    // pseudorandom sequence that the physics engine used for the floor,
+    // resulting in exact identical clones every generation if the parents
+    // happen to have the same scores.
     Math.seedrandom();
-
     generationState = manageRound.nextGeneration(
       generationState, results, generationConfig()
     );
+  }
+
+/**
+   * Set up ghost for the next round (mutable floor → reset, fixed → rewind).
+   */
+  function cw_setupGhostForRound() {
     if (world_def.mutable_floor) {
       ghost = null;
       world_def.floorseed = btoa(Math.seedrandom());
     } else {
       ghost_reset_ghost(ghost);
     }
+  }
+
+/**
+   * Notify server about a new generation.
+   */
+  function cw_notifyServerOfGeneration() {
+    queueServerSave("generation");
+  }
+
+/**
+   * Start a new simulation round (new generation or restart).
+   * @param {Object} results - Previous round results
+   */
+  function cw_newRound(results) {
+    cw_resetCameraForRound();
+    cw_generateNextGeneration(results);
+    cw_setupGhostForRound();
     currentRunner = worldRun(world_def, generationState.generation, uiListeners);
     setupCarUI();
     cw_drawMiniMap();
     resetCarUI();
-    queueServerSave("generation");
+    cw_notifyServerOfGeneration();
   }
 
   /**
