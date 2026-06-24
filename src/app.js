@@ -249,6 +249,10 @@ function createNormal(prop, generator) {
         tileDimensions: { width: 1.5, height: 0.15 }
       };
     }
+/**
+     * Retrieve car physics constants (wheel radius, density, friction, motor torque).
+     * @returns {{wheelRadius: number, wheelDensity: number, wheelFriction: number, motorTorque: number}}
+     */
     function getCarConstants() { return carConstants; }
     /**
      * Build a genetic schema from an array of float values.
@@ -376,6 +380,17 @@ function createNormal(prop, generator) {
   }
 
 
+/**
+   * Create a single chassis polygon body in Box2D.
+   * @param {Object} world - Box2D world
+   * @param {number} x - X position
+   * @param {number} y - Y position
+   * @param {number} rotation - Rotation in radians
+   * @param {Array} vertices - Polygon vertices
+   * @param {Object} parentBody - Parent body to attach as fixture
+   * @param {boolean} isWheel - Whether this is a wheel
+   * @returns {Object} The created Box2D body
+   */
   function createChassisPart(body, vertex1, vertex2, density) {
     var vertex_list = [];
     vertex_list.push(vertex1);
@@ -578,6 +593,9 @@ function createNormal(prop, generator) {
       return curparent
     }
 
+/**
+     * Initialize the random number generator for parent selection.
+     */
     function initializePick() {
       var curparent = 0;
 
@@ -760,6 +778,12 @@ function createNormal(prop, generator) {
     return out;
   }
 
+/**
+   * Extract chassis polygon data from a replay frame.
+   * @param {Object} replay - Replay data
+   * @param {number} frameIndex - Frame index
+   * @returns {Object|null} Chassis polygon data or null
+   */
   function ghost_get_chassis(c) {
     var gc = [];
 
@@ -783,6 +807,13 @@ function createNormal(prop, generator) {
     return gc;
   }
 
+/**
+   * Extract wheel circle data from a replay frame.
+   * @param {Object} replay - Replay data
+   * @param {number} frameIndex - Frame index
+   * @param {number} wheelIndex - Wheel index
+   * @returns {Object|null} Wheel circle data or null
+   */
   function ghost_get_wheel(w) {
     var gw = [];
 
@@ -824,6 +855,11 @@ function createNormal(prop, generator) {
       }
     }
 
+/**
+     * Create a ghost car from replay data for visualization.
+     * @param {Object} replay - Replay data with frame history
+     * @returns {Object} Ghost object for rendering
+     */
     function ghost_create_ghost() {
       if (!enable_ghost)
         return null;
@@ -835,6 +871,10 @@ function createNormal(prop, generator) {
       }
     }
 
+/**
+     * Reset ghost playback to frame 0.
+     * @param {Object} ghost - Ghost object to reset
+     */
     function ghost_reset_ghost(ghost) {
       if (!enable_ghost)
         return;
@@ -843,17 +883,30 @@ function createNormal(prop, generator) {
       ghost.frame = 0;
     }
 
+/**
+     * Pause ghost replay playback.
+     * @param {Object} ghost - Ghost object
+     */
     function ghost_pause(ghost) {
       if (ghost != null)
         ghost.old_frame = ghost.frame;
       ghost_reset_ghost(ghost);
     }
 
+/**
+     * Resume ghost replay playback.
+     * @param {Object} ghost - Ghost object
+     */
     function ghost_resume(ghost) {
       if (ghost != null)
         ghost.frame = ghost.old_frame;
     }
 
+/**
+     * Get current ghost position from replay.
+     * @param {Object} ghost - Ghost object
+     * @returns {{x: number, y: number}} Position
+     */
     function ghost_get_position(ghost) {
       if (!enable_ghost)
         return;
@@ -868,6 +921,12 @@ function createNormal(prop, generator) {
       return frame.pos;
     }
 
+/**
+     * Compare current car position to replay position for synchronization.
+     * @param {Object} ghost - Ghost object
+     * @param {Object} car - Current car state
+     * @returns {number} Position delta
+     */
     function ghost_compare_to_replay(replay, ghost, max) {
       if (!enable_ghost)
         return;
@@ -883,6 +942,11 @@ function createNormal(prop, generator) {
       }
     }
 
+/**
+     * Advance ghost by one replay frame.
+     * @param {Object} ghost - Ghost object
+     * @returns {boolean} Whether advancement succeeded
+     */
     function ghost_move_frame(ghost) {
       if (!enable_ghost)
         return;
@@ -895,6 +959,11 @@ function createNormal(prop, generator) {
         ghost.frame = ghost.replay.num_frames - 1;
     }
 
+/**
+     * Record a frame to the replay buffer.
+     * @param {Object} car - Car state to record
+     * @param {Array} replay - Replay buffer
+     */
     function ghost_add_replay_frame(replay, car) {
       if (!enable_ghost)
         return;
@@ -906,6 +975,11 @@ function createNormal(prop, generator) {
       replay.num_frames++;
     }
 
+/**
+     * Draw the current ghost replay frame on canvas.
+     * @param {Object} ghost - Ghost object
+     * @param {Object} ctx - Canvas context
+     */
     function ghost_draw_frame(ctx, ghost, camera) {
       var zoom = camera.zoom;
       if (!enable_ghost)
@@ -942,6 +1016,12 @@ function createNormal(prop, generator) {
       ctx.stroke();
     }
 
+/**
+     * Draw a polygon for ghost rendering.
+     * @param {Object} ctx - Canvas context
+     * @param {Array} vertices - Polygon vertices
+     * @param {string} color - Fill color
+     */
     function ghost_draw_poly(ctx, vtx, n_vtx) {
       ctx.moveTo(vtx[0].x, vtx[0].y);
       for (var i = 1; i < n_vtx; i++) {
@@ -950,6 +1030,14 @@ function createNormal(prop, generator) {
       ctx.lineTo(vtx[0].x, vtx[0].y);
     }
 
+/**
+     * Draw a circle for ghost wheel rendering.
+     * @param {Object} ctx - Canvas context
+     * @param {number} x - Center X
+     * @param {number} y - Center Y
+     * @param {number} radius - Circle radius
+     * @param {string} color - Fill color
+     */
     function ghost_draw_circle(ctx, center, radius, angle) {
       ctx.beginPath();
       ctx.arc(center.x, center.y, radius, 0, 2 * Math.PI, true);
@@ -1084,6 +1172,10 @@ function createNormal(prop, generator) {
   };
 
 
+/**
+   * Store current generation scores for graph plotting.
+   * @param {Array} cars - Array of car objects with scores
+   */
   function cw_storeGraphScores(lastState, cw_carScores, generationSize) {
     var maxGraphHistory = 2000;
     var maxTopScores = 100;
@@ -1105,6 +1197,11 @@ function createNormal(prop, generator) {
     }
   }
 
+/**
+   * Trim history arrays to prevent memory leaks.
+   * @param {Array} arr - History array
+   * @param {number} max - Maximum length
+   */
   function cw_limitHistory(values, maxLength) {
     return values.length > maxLength ? values.slice(values.length - maxLength) : values;
   }
@@ -1115,6 +1212,12 @@ function createNormal(prop, generator) {
     }).slice(0, maxLength);
   }
 
+/**
+   * Plot a line on the statistics graph canvas.
+   * @param {Object} ctx - Canvas context
+   * @param {Array} data - Data points
+   * @param {string} color - Line color
+   */
   function cw_plotLine(state, graphctx, dataKey, color) {
     var data = state[dataKey];
     var graphsize = data.length;
@@ -1127,14 +1230,23 @@ function createNormal(prop, generator) {
     graphctx.stroke();
   }
 
+/**
+   * Plot the top score line (red) on the graph.
+   */
   function cw_plotTop(state, graphctx) {
     cw_plotLine(state, graphctx, "cw_graphTop", "#C83B3B");
   }
 
+/**
+   * Plot the elite average line (green) on the graph.
+   */
   function cw_plotElite(state, graphctx) {
     cw_plotLine(state, graphctx, "cw_graphElite", "#7BC74D");
   }
 
+/**
+   * Plot the generation average line (blue) on the graph.
+   */
   function cw_plotAverage(state, graphctx) {
     cw_plotLine(state, graphctx, "cw_graphAverage", "#3F72AF");
   }
@@ -1156,6 +1268,9 @@ function createNormal(prop, generator) {
     return sum / generationSize;
   }
 
+/**
+   * Clear all graph canvases.
+   */
   function cw_clearGraphics(graphcanvas, graphctx, graphwidth, graphheight) {
     graphcanvas.width = graphcanvas.width;
     graphctx.translate(0, graphheight);
@@ -1172,6 +1287,9 @@ function createNormal(prop, generator) {
     graphctx.stroke();
   }
 
+/**
+   * List top N scores in the statistics table.
+   */
   function cw_listTopScores(elem, state) {
     var cw_topScores = state.cw_topScores;
     var ts = elem;
@@ -1383,6 +1501,11 @@ function createNormal(prop, generator) {
     };
   }
 
+/**
+   * Create the terrain/floor from world seed data using Box2D chain shapes.
+   * @param {Object} world - Box2D world
+   * @param {Array} seed - World seed data
+   */
   function cw_createFloor(world, floorseed, dimensions, maxFloorTiles, mutable_floor) {
     var last_tile = null;
     var tile_position = new b2Vec2(-5, 0);
@@ -1408,6 +1531,13 @@ function createNormal(prop, generator) {
   }
 
 
+/**
+   * Create a single floor tile (chain edge) from seed data.
+   * @param {Object} world - Box2D world
+   * @param {number} x - X position
+   * @param {number} y - Y position
+   * @returns {Object} Box2D body for the floor tile
+   */
   function cw_createFloorTile(world, dim, position, angle) {
     var body_def = new b2BodyDef();
 
