@@ -2871,30 +2871,23 @@ function createNormal(prop, generator) {
   }
 
 
-  document.querySelector("#mutationrate").addEventListener("change", function (e) {
-    var elem = e.target
-    cw_setMutation(elem.options[elem.selectedIndex].value)
-  })
+  /**
+   * Bind a select element's change event to a setter function.
+   * Eliminates repetitive addEventListener boilerplate for dropdown controls.
+   * @param {string} selector - CSS selector for the select element
+   * @param {Function} setterFn - Function to call with the selected value
+   */
+  function bindSelectToSetter(selector, setterFn) {
+    document.querySelector(selector).addEventListener("change", function (e) {
+      setterFn(e.target.options[e.target.selectedIndex].value)
+    })
+  }
 
-  document.querySelector("#mutationsize").addEventListener("change", function (e) {
-    var elem = e.target
-    cw_setMutationRange(elem.options[elem.selectedIndex].value)
-  })
-
-  document.querySelector("#floor").addEventListener("change", function (e) {
-    var elem = e.target
-    cw_setMutableFloor(elem.options[elem.selectedIndex].value)
-  });
-
-  document.querySelector("#gravity").addEventListener("change", function (e) {
-    var elem = e.target
-    cw_setGravity(elem.options[elem.selectedIndex].value)
-  })
-
-  document.querySelector("#elitesize").addEventListener("change", function (e) {
-    var elem = e.target
-    cw_setEliteSize(elem.options[elem.selectedIndex].value)
-  })
+  bindSelectToSetter("#mutationrate", cw_setMutation);
+  bindSelectToSetter("#mutationsize", cw_setMutationRange);
+  bindSelectToSetter("#floor", cw_setMutableFloor);
+  bindSelectToSetter("#gravity", cw_setGravity);
+  bindSelectToSetter("#elitesize", cw_setEliteSize);
 
 /**
    * Set the mutation rate for the genetic algorithm.
