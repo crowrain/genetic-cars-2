@@ -1332,22 +1332,17 @@ function createNormal(prop, generator) {
 
 
 
-  function drawCar(car_constants, myCar, camera, ctx) {
-    var camera_x = camera.pos.x;
+  /**
+   * Draw all wheels of a car, coloring by density.
+   * @param {Object} myCar - Car wrapper object
+   * @param {Object} camera - Camera with .pos.x and .zoom
+   * @param {CanvasRenderingContext2D} ctx - Canvas context
+   * @param {Object} car_constants - Car constants with wheelMinDensity and wheelDensityRange
+   */
+  function drawCarWheels(myCar, camera, ctx, car_constants) {
     var zoom = camera.zoom;
-
-    var wheelMinDensity = car_constants.wheelMinDensity
-    var wheelDensityRange = car_constants.wheelDensityRange
-
-    if (!myCar.alive) {
-      return;
-    }
-    var myCarPos = myCar.getPosition();
-
-    if (myCarPos.x < (camera_x - 5)) {
-      // too far behind, don't draw
-      return;
-    }
+    var wheelMinDensity = car_constants.wheelMinDensity;
+    var wheelDensityRange = car_constants.wheelDensityRange;
 
     ctx.strokeStyle = "#444";
     ctx.lineWidth = 1 / zoom;
@@ -1363,7 +1358,14 @@ function createNormal(prop, generator) {
         cw_drawCircle(ctx, b, s.m_p, s.m_radius, b.m_sweep.a, rgbcolor);
       }
     }
+  }
 
+  /**
+   * Draw the chassis polygon of a car. Elite cars get a blue tint.
+   * @param {Object} myCar - Car wrapper object
+   * @param {CanvasRenderingContext2D} ctx - Canvas context
+   */
+  function drawCarChassis(myCar, ctx) {
     if (myCar.is_elite) {
       ctx.strokeStyle = "#3F72AF";
       ctx.fillStyle = "#DBE2EF";
@@ -1375,12 +1377,29 @@ function createNormal(prop, generator) {
 
     var chassis = myCar.car.car.chassis;
 
-    for (f = chassis.GetFixtureList(); f; f = f.m_next) {
+    for (var f = chassis.GetFixtureList(); f; f = f.m_next) {
       var cs = f.GetShape();
       cw_drawVirtualPoly(ctx, chassis, cs.m_vertices, cs.m_vertexCount);
     }
     ctx.fill();
     ctx.stroke();
+  }
+
+  function drawCar(car_constants, myCar, camera, ctx) {
+    var camera_x = camera.pos.x;
+
+    if (!myCar.alive) {
+      return;
+    }
+    var myCarPos = myCar.getPosition();
+
+    if (myCarPos.x < (camera_x - 5)) {
+      // too far behind, don't draw
+      return;
+    }
+
+    drawCarWheels(myCar, camera, ctx, car_constants);
+    drawCarChassis(myCar, ctx);
   }
 
 
