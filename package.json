@@ -6,7 +6,8 @@
   "scripts": {
     "start": "npx http-server -p 8080 -c-1",
     "lint": "npx eslint src/app.js",
-    "format": "npx prettier --write 'src/**/*.js' '*.html' '*.css'"
+    "format": "npx prettier --write 'src/**/*.js' '*.html' '*.css'",
+    "test": "jest --verbose"
   },
   "keywords": [
     "genetic-algorithm",
