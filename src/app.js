@@ -105,6 +105,14 @@
 
 
 
+/**
+ * Create a symmetric (inclusive) normal-distributed random value [0, 1].
+ * @param {{inclusive: boolean}} prop - Options for symmetry.
+ * @param {function} generator - Random number generator.
+ * @returns {number} Random value in [0, 1].
+ */
+
+
 function createNormal(prop, generator) {
     if (!prop.inclusive) {
       return generator();
@@ -176,6 +184,13 @@ function createNormal(prop, generator) {
     },
   }
 
+  /**
+   * Strip car definition of ancestry metadata for serialization.
+   * @param {Object} def - Full car definition.
+   * @returns {Object} Slim definition without ancestry.
+   */
+
+
   function cw_slimCarDefinition(def) {
     return Object.keys(def).reduce(function (clone, key) {
       if (key !== "ancestry") {
@@ -184,6 +199,13 @@ function createNormal(prop, generator) {
       return clone;
     }, { id: def.id });
   }
+
+  /**
+   * Strip an entire generation of ancestry metadata for serialization.
+   * @param {Array} generation - Array of car definitions.
+   * @returns {Array} Slim generation.
+   */
+
 
   function cw_slimGeneration(generation) {
     return (generation || []).map(cw_slimCarDefinition);
@@ -212,6 +234,12 @@ function createNormal(prop, generator) {
   var carConstruct = (function () {
     var carConstants = carConstantsData;
 
+    /**
+     * Build the physics world definition (gravity, dimensions, seed).
+     * @returns {Object} World configuration object.
+     */
+
+
     function worldDef() {
       var box2dfps = 60;
       return {
@@ -222,6 +250,14 @@ function createNormal(prop, generator) {
       };
     }
     function getCarConstants() { return carConstants; }
+    /**
+     * Build a genetic schema from an array of float values.
+     * Maps raw gene values to the schema structure (chassis, wheels, joints).
+     * @param {number[]} values - Raw gene array.
+     * @returns {Object} Schema object with typed gene arrays.
+     */
+
+
     function generateSchema(values) {
       return {
         wheel_radius: { type: "float", length: values.wheelCount, min: values.wheelMinRadius, range: values.wheelRadiusRange, factor: 1 },
@@ -244,6 +280,15 @@ function createNormal(prop, generator) {
 
 
 
+
+
+  /**
+   * Convert a genetic schema definition into a physical car (Box2D bodies + joints).
+   * @param {Object} normal_def - Genetic schema with typed values.
+   * @param {b2World} world - Box2D physics world.
+   * @param {Object} constants - Car constants (mass, friction, etc).
+   * @returns {Object} Car with physics bodies and joints.
+   */
 
 
   function defToCar(normal_def, world, constants) {
@@ -288,6 +333,15 @@ function createNormal(prop, generator) {
 
     return instance;
   }
+
+  /**
+   * Create a convex polygon chassis body from vertices.
+   * @param {b2World} world - Box2D physics world.
+   * @param {b2Vec2[]} vertexs - Array of chassis vertices.
+   * @param {number} density - Chassis material density.
+   * @returns {b2Body} Chassis body.
+   */
+
 
   function createChassis(world, vertexs, density) {
 
@@ -338,6 +392,15 @@ function createNormal(prop, generator) {
     body.CreateFixture(fix_def);
   }
 
+  /**
+   * Create a circular wheel body with physics fixtures.
+   * @param {b2World} world - Box2D physics world.
+   * @param {number} radius - Wheel radius in meters.
+   * @param {number} density - Wheel material density.
+   * @returns {b2Body} Wheel body.
+   */
+
+
   function createWheel(world, radius, density) {
     var body_def = new b2BodyDef();
     body_def.type = b2Body.b2_dynamicBody;
@@ -369,6 +432,13 @@ function createNormal(prop, generator) {
     calculateScore: calculateScore,
   };
 
+  /**
+   * Build the initial physics state for a car (positions, velocities).
+   * @param {Object} world_def - World configuration.
+   * @returns {Object} Initial state with body transforms and velocities.
+   */
+
+
   function getInitialState(world_def) {
     return {
       frames: 0,
@@ -378,6 +448,15 @@ function createNormal(prop, generator) {
       maxPositionx: 0,
     };
   }
+
+  /**
+   * Step physics simulation: apply forces, update state, check status.
+   * @param {Object} constants - Car physics constants.
+   * @param {Function} worldConstruct - Function to recreate world each step.
+   * @param {Object} state - Current car state.
+   * @returns {Object} Updated state with status.
+   */
+
 
   function updateState(constants, worldConstruct, state) {
     if (state.health <= 0) {
@@ -412,6 +491,14 @@ function createNormal(prop, generator) {
     }
     return nextState;
   }
+
+  /**
+   * Determine car status based on position relative to track bounds.
+   * @param {Object} state - Current car state.
+   * @param {Object} constants - Car constants.
+   * @returns {number} Status code (0=alive, 1=failed, 2=success).
+   */
+
 
   function getStatus(state, constants) {
     if (hasFailed(state, constants)) return -1;
@@ -569,6 +656,17 @@ function createNormal(prop, generator) {
       };
     }
 
+    /**
+     * Evolve to the next generation: select parents, crossover, mutate.
+     * @param {Object} config - Generation config (mutation rate, elite size).
+     * @param {number} generationSize - Population size.
+     * @param {Function} chooser - Parent selection function.
+     * @param {Object[]} lastGen - Parent generation.
+     * @param {Object} schema - Genetic schema template.
+     * @returns {Object[]} New generation.
+     */
+
+
     function nextGeneration(
       previousState,
       scores,
@@ -609,6 +707,14 @@ function createNormal(prop, generator) {
         generation: newGeneration,
       };
     }
+
+
+    /**
+     * Create a child car from two parents via crossover, then mutate.
+     * @param {Object} config - Mutation config.
+     * @param {Object[]} parents - Two parent car definitions.
+     * @returns {Object} Child car definition.
+     */
 
 
     function makeChild(config, parents) {
@@ -1158,6 +1264,15 @@ function createNormal(prop, generator) {
 
   /* ========================================================================= */
   /* === Car ================================================================= */
+  /**
+   * Car class constructor: manages physics state, score tracking, and rendering.
+   * @constructor
+   * @param {b2World} world - Box2D physics world.
+   * @param {Object} car_def - Genetic definition of the car.
+   * @param {Object} constants - Car physics constants.
+   */
+
+
   var cw_Car = function () {
     this.__constructor.apply(this, arguments);
   }
@@ -1234,6 +1349,12 @@ function createNormal(prop, generator) {
   }
   
   */
+
+  /**
+   * Initialize the physics scene: create world, floor tiles, and starting car.
+   * @param {Object} world_def - World configuration (gravity, seed, dimensions).
+   */
+
 
   function setupScene(world_def) {
 
@@ -1325,6 +1446,14 @@ function createNormal(prop, generator) {
   /* -------------------------------------------------------------------------
    * world/run.js
    * ------------------------------------------------------------------------- */
+  /**
+   * Main simulation runner: iterate physics steps, update cars, check round end.
+   * @param {Object} world_def - World configuration.
+   * @param {Object[]} defs - Array of car definitions.
+   * @param {Object} listeners - Callbacks (onStep, onEnd, etc).
+   */
+
+
   function worldRun(world_def, defs, listeners) {
     if (world_def.mutable_floor) {
       // GHOST DISABLED
@@ -1827,6 +1956,11 @@ function createNormal(prop, generator) {
   /* ========================================================================= */
   /* ==== Drawing ============================================================ */
 
+  /**
+   * Render the main simulation screen: cars, floor, ghost replay, minimap.
+   */
+
+
   function cw_drawScreen() {
     var floorTiles = currentRunner.scene.floorTiles;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -2022,6 +2156,12 @@ function createNormal(prop, generator) {
     );
   }
 
+  /**
+   * Main animation loop: render frame, advance simulation step.
+   * Called via requestAnimationFrame.
+   */
+
+
   function gameLoop() {
     loops = 0;
     while (!cw_paused && (new Date).getTime() > nextGameTick && loops < maxFrameSkip) {
@@ -2113,6 +2253,11 @@ function createNormal(prop, generator) {
     resetCarUI();
     queueServerSave("generation");
   }
+
+  /**
+   * Start the simulation: initialize state, begin game loop, start server sync.
+   */
+
 
   function cw_startSimulation() {
     cw_paused = false;
@@ -2274,6 +2419,11 @@ function createNormal(prop, generator) {
   // ghost replay stuff END
 
   // initial stuff, only called once (hopefully)
+  /**
+   * Application entry point: initialize all systems and start the first simulation.
+   */
+
+
   function cw_init() {
     // clone silver dot and health bar
     var mmm = document.getElementsByName('minimapmarker')[0];
