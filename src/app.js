@@ -690,6 +690,55 @@ function createNormal(prop, generator) {
      */
 
 
+    /**
+     * Copy elite car definitions from the previous generation into the new one.
+     * Elite cars are cloned without modification.
+     * @param {Object} previousState - Previous generation state with .counter
+     * @param {Array} scores - Sorted car results (best first)
+     * @param {Object} config - Generation config with .championLength
+     * @returns {Object} State with updated counter and elite population
+     */
+    function copyEliteCars(previousState, scores, config) {
+      var newGeneration = [];
+      for (var k = 0; k < config.championLength; k++) {
+        var elite = cw_slimCarDefinition(scores[k].def);
+        elite.is_elite = true;
+        elite.index = k;
+        newGeneration.push(elite);
+      }
+      return {
+        counter: previousState.counter + 1,
+        generation: newGeneration,
+      };
+    }
+
+    /**
+     * Breed remaining slots in the new generation using tournament selection,
+     * crossover, and mutation.
+     * @param {Array} scores - Sorted car results (best first)
+     * @param {Array} newGeneration - Current new generation (will be mutated)
+     * @param {Object} config - Generation config with .generationSize and .selectFromAllParents
+     * @param {Array} parentList - Track of used parent pairs (prevents duplicates)
+     */
+    function breedRemaining(scores, newGeneration, config, parentList) {
+      for (var k = config.championLength; k < config.generationSize; k++) {
+        var parent1 = config.selectFromAllParents(scores, parentList);
+        var parent2 = parent1;
+        while (parent2 == parent1) {
+          parent2 = config.selectFromAllParents(scores, parentList, parent1);
+        }
+        var pair = [parent1, parent2]
+        parentList.push(pair);
+        var newborn = makeChild(config,
+          pair.map(function (parent) { return scores[parent].def; })
+        );
+        newborn = mutate(config, newborn);
+        newborn.is_elite = false;
+        newborn.index = k;
+        newGeneration.push(newborn);
+      }
+    }
+
     function nextGeneration(
       previousState,
       scores,
@@ -699,34 +748,16 @@ function createNormal(prop, generator) {
         generationSize = config.generationSize,
         selectFromAllParents = config.selectFromAllParents;
 
-      var newGeneration = [];
-      var newborn;
-      for (var k = 0; k < champion_length; k++) {
-        var elite = cw_slimCarDefinition(scores[k].def);
-        elite.is_elite = true;
-        elite.index = k;
-        newGeneration.push(elite);
-      }
+      // Copy elite cars first
+      var state = copyEliteCars(previousState, scores, config);
+      var newGeneration = state.generation;
+
+      // Breed remaining slots
       var parentList = [];
-      for (k = champion_length; k < generationSize; k++) {
-        var parent1 = selectFromAllParents(scores, parentList);
-        var parent2 = parent1;
-        while (parent2 == parent1) {
-          parent2 = selectFromAllParents(scores, parentList, parent1);
-        }
-        var pair = [parent1, parent2]
-        parentList.push(pair);
-        newborn = makeChild(config,
-          pair.map(function (parent) { return scores[parent].def; })
-        );
-        newborn = mutate(config, newborn);
-        newborn.is_elite = false;
-        newborn.index = k;
-        newGeneration.push(newborn);
-      }
+      breedRemaining(scores, newGeneration, config, parentList);
 
       return {
-        counter: previousState.counter + 1,
+        counter: state.counter,
         generation: newGeneration,
       };
     }
