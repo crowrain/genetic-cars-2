@@ -1620,6 +1620,38 @@ function createNormal(prop, generator) {
       };
     });
     var alivecars = cars;
+
+    /**
+     * Update a single car's state and return its run status.
+     * Status 0 = still alive, non-zero = finished.
+     * @param {Object} car - Car object with .car and .state
+     * @param {Object} world_def - World definition
+     * @param {Object} listeners - Car event listeners
+     * @returns {number} Run status code
+     */
+    function updateCarStep(car, world_def, listeners) {
+      car.state = carRun.updateState(
+        world_def, car.car, car.state
+      );
+      var status = carRun.getStatus(car.state, world_def);
+      listeners.carStep(car);
+      return status;
+    }
+
+    /**
+     * Remove a dead car's Box2D bodies from the world.
+     * Destroys the chassis and all wheels.
+     * @param {Object} car - Car object with .car (contains chassis and wheels)
+     * @param {Object} world - Box2D world instance
+     */
+    function cleanupDeadCar(car, world) {
+      var worldCar = car.car;
+      world.DestroyBody(worldCar.chassis);
+      for (var w = 0; w < worldCar.wheels.length; w++) {
+        world.DestroyBody(worldCar.wheels[w]);
+      }
+    }
+
     return {
       scene: scene,
       cars: cars,
@@ -1630,25 +1662,13 @@ function createNormal(prop, generator) {
         scene.world.Step(1 / world_def.box2dfps, 20, 20);
         listeners.preCarStep();
         alivecars = alivecars.filter(function (car) {
-          car.state = carRun.updateState(
-            world_def, car.car, car.state
-          );
-          var status = carRun.getStatus(car.state, world_def);
-          listeners.carStep(car);
+          var status = updateCarStep(car, world_def, listeners);
           if (status === 0) {
             return true;
           }
           car.score = carRun.calculateScore(car.state, world_def);
           listeners.carDeath(car);
-
-          var world = scene.world;
-          var worldCar = car.car;
-          world.DestroyBody(worldCar.chassis);
-
-          for (var w = 0; w < worldCar.wheels.length; w++) {
-            world.DestroyBody(worldCar.wheels[w]);
-          }
-
+          cleanupDeadCar(car, scene.world);
           return false;
         })
         if (alivecars.length === 0) {
