@@ -301,3 +301,237 @@ describe('breedRemaining', () => {
     });
   });
 });
+
+
+// ============================================================
+// Ghost Module Tests (src/ghost.js)
+// ============================================================
+
+// Minimal ghost_fns mock for testing (no Box2D dependency)
+const testGhostFns = (function () {
+  var enable_ghost = true;
+
+  function ghostGuard(ghost) {
+    if (!enable_ghost) return false;
+    if (ghost == null) return false;
+    return true;
+  }
+
+  function ghost_create_replay() {
+    if (!enable_ghost) return null;
+    return {num_frames: 0, frames: []};
+  }
+
+  function ghost_create_ghost() {
+    if (!enable_ghost) return null;
+    return {replay: null, frame: 0, dist: -100};
+  }
+
+  function ghost_reset_ghost(ghost) {
+    if (!enable_ghost) return;
+    if (ghost == null) return;
+    ghost.frame = 0;
+  }
+
+  function ghost_pause(ghost) {
+    if (ghost != null) ghost.old_frame = ghost.frame;
+    ghost_reset_ghost(ghost);
+  }
+
+  function ghost_resume(ghost) {
+    if (ghost != null) ghost.frame = ghost.old_frame;
+  }
+
+  function ghost_get_position(ghost) {
+    if (!enable_ghost) return;
+    if (ghost == null) return;
+    if (ghost.frame < 0) return;
+    if (ghost.replay == null) return;
+    var frame = ghost.replay.frames[ghost.frame];
+    if (!frame) return;
+    return frame.pos;
+  }
+
+  function ghost_compare_to_replay(replay, ghost, max) {
+    if (!enable_ghost) return;
+    if (ghost == null) return;
+    if (replay == null) return;
+
+    if (ghost.dist < max) {
+      ghost.replay = replay;
+      ghost.dist = max;
+      ghost.frame = 0;
+    }
+  }
+
+  function ghost_move_frame(ghost) {
+    if (!enable_ghost) return;
+    if (ghost == null) return;
+    if (ghost.replay == null) return;
+    ghost.frame++;
+    if (ghost.frame >= ghost.replay.num_frames) {
+      ghost.frame = ghost.replay.num_frames - 1;
+    }
+  }
+
+  return {
+    ghostGuard,
+    ghost_create_replay,
+    ghost_create_ghost,
+    ghost_reset_ghost,
+    ghost_pause,
+    ghost_resume,
+    ghost_get_position,
+    ghost_compare_to_replay,
+    ghost_move_frame
+  };
+})();
+
+describe('ghostGuard', () => {
+  test('returns true for valid ghost', () => {
+    const ghost = {replay: null, frame: 0, dist: -100};
+    expect(testGhostFns.ghostGuard(ghost)).toBe(true);
+  });
+
+  test('returns false for null ghost', () => {
+    expect(testGhostFns.ghostGuard(null)).toBe(false);
+  });
+
+  test('returns false for undefined ghost', () => {
+    expect(testGhostFns.ghostGuard(undefined)).toBe(false);
+  });
+});
+
+describe('ghost_create_replay', () => {
+  test('returns replay object with zero frames', () => {
+    const replay = testGhostFns.ghost_create_replay();
+    expect(replay).toHaveProperty('num_frames', 0);
+    expect(replay).toHaveProperty('frames');
+    expect(Array.isArray(replay.frames)).toBe(true);
+  });
+});
+
+describe('ghost_create_ghost', () => {
+  test('returns ghost with correct defaults', () => {
+    const ghost = testGhostFns.ghost_create_ghost();
+    expect(ghost.replay).toBeNull();
+    expect(ghost.frame).toBe(0);
+    expect(ghost.dist).toBe(-100);
+  });
+});
+
+describe('ghost_reset_ghost', () => {
+  test('resets frame to 0', () => {
+    const ghost = testGhostFns.ghost_create_ghost();
+    ghost.frame = 42;
+    testGhostFns.ghost_reset_ghost(ghost);
+    expect(ghost.frame).toBe(0);
+  });
+
+  test('does not throw on null ghost', () => {
+    expect(() => testGhostFns.ghost_reset_ghost(null)).not.toThrow();
+  });
+});
+
+describe('ghost_pause and ghost_resume', () => {
+  test('pause saves current frame, resume restores it', () => {
+    const ghost = testGhostFns.ghost_create_ghost();
+    ghost.frame = 10;
+    testGhostFns.ghost_pause(ghost);
+    expect(ghost.frame).toBe(0);
+    expect(ghost.old_frame).toBe(10);
+
+    testGhostFns.ghost_resume(ghost);
+    expect(ghost.frame).toBe(10);
+  });
+
+  test('pause on null ghost does not throw', () => {
+    expect(() => testGhostFns.ghost_pause(null)).not.toThrow();
+  });
+
+  test('resume on null ghost does not throw', () => {
+    expect(() => testGhostFns.ghost_resume(null)).not.toThrow();
+  });
+});
+
+describe('ghost_get_position', () => {
+  test('returns position from replay frame', () => {
+    const ghost = testGhostFns.ghost_create_ghost();
+    ghost.replay = {
+      num_frames: 1,
+      frames: [{pos: {x: 5, y: 10}}]
+    };
+    ghost.frame = 0;
+    const pos = testGhostFns.ghost_get_position(ghost);
+    expect(pos).toEqual({x: 5, y: 10});
+  });
+
+  test('returns undefined for null replay', () => {
+    const ghost = testGhostFns.ghost_create_ghost();
+    ghost.replay = null;
+    expect(testGhostFns.ghost_get_position(ghost)).toBeUndefined();
+  });
+
+  test('returns undefined for out-of-range frame', () => {
+    const ghost = testGhostFns.ghost_create_ghost();
+    ghost.replay = {num_frames: 1, frames: [{pos: {x: 1, y: 1}}]};
+    ghost.frame = 5;
+    expect(testGhostFns.ghost_get_position(ghost)).toBeUndefined();
+  });
+
+  test('returns undefined for negative frame', () => {
+    const ghost = testGhostFns.ghost_create_ghost();
+    ghost.replay = {num_frames: 1, frames: [{pos: {x: 1, y: 1}}]};
+    ghost.frame = -1;
+    expect(testGhostFns.ghost_get_position(ghost)).toBeUndefined();
+  });
+});
+
+describe('ghost_compare_to_replay', () => {
+  test('updates ghost when score exceeds distance threshold', () => {
+    const ghost = testGhostFns.ghost_create_ghost();
+    const replay = {num_frames: 5, frames: []};
+    ghost.dist = -100;
+
+    testGhostFns.ghost_compare_to_replay(replay, ghost, 50);
+    expect(ghost.replay).toBe(replay);
+    expect(ghost.dist).toBe(50);
+    expect(ghost.frame).toBe(0);
+  });
+
+  test('does not update when score is below threshold', () => {
+    const ghost = testGhostFns.ghost_create_ghost();
+    ghost.dist = 100;
+    const replay = {num_frames: 5, frames: []};
+
+    testGhostFns.ghost_compare_to_replay(replay, ghost, 50);
+    expect(ghost.replay).toBeNull();
+    expect(ghost.dist).toBe(100);
+  });
+});
+
+describe('ghost_move_frame', () => {
+  test('advances frame by 1', () => {
+    const ghost = testGhostFns.ghost_create_ghost();
+    ghost.replay = {num_frames: 10, frames: []};
+    ghost.frame = 0;
+
+    testGhostFns.ghost_move_frame(ghost);
+    expect(ghost.frame).toBe(1);
+  });
+
+  test('clamps frame to last available frame', () => {
+    const ghost = testGhostFns.ghost_create_ghost();
+    ghost.replay = {num_frames: 3, frames: []};
+    ghost.frame = 2;
+
+    testGhostFns.ghost_move_frame(ghost);
+    expect(ghost.frame).toBe(2); // stays at last frame
+  });
+
+  test('does not throw on null replay', () => {
+    const ghost = testGhostFns.ghost_create_ghost();
+    ghost.replay = null;
+    expect(() => testGhostFns.ghost_move_frame(ghost)).not.toThrow();
+  });
+});
