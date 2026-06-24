@@ -1868,13 +1868,15 @@ function createNormal(prop, generator) {
       pendingSave: false,
       pendingSnapshot: null,
       runnerStarted: false,
+      pollFailureCount: 0,
+      maxPollFailures: 5,
       pollTimer: null,
       heartbeatTimer: null
     };
   })();
 
 /**
-   * Update the distance and height display on the statistics table.
+ * Update the distance and height display on the statistics table.
    * @param {number} distance - Current best distance
    * @param {number} height - Current height
    */
@@ -2075,11 +2077,21 @@ function createNormal(prop, generator) {
         return true;
       }
       return false;
+    }).catch(function (err) {
+      if (!options.quiet) {
+        if (err.message === "Failed to fetch" || err.message === "TypeError") {
+          serverSetStatus("Server sync: no backend available (port 8089)", "warning");
+        } else {
+          serverSetStatus("Server sync: " + err.message, "error");
+          console.error("Server sync fetch failed", err);
+        }
+      }
+      throw err;
     });
   }
 
 /**
-   * Apply a server snapshot that was fetched asynchronously.
+ * Apply a server snapshot that was fetched asynchronously.
    */
   function applyPendingServerSnapshot() {
     var snapshot = serverSync.pendingSnapshot;
@@ -2150,9 +2162,20 @@ function createNormal(prop, generator) {
     }
     serverSetStatus("Server sync: watching autonomous runner", "running");
     serverSync.pollTimer = setInterval(function () {
-      serverLoadLatest({ onlyIfNewer: true, quiet404: true, deferActive: true }).catch(function (err) {
-        serverSetStatus("Server sync: " + err.message, "error");
-      });
+      serverLoadLatest({ onlyIfNewer: true, quiet404: true, quiet: true, deferActive: true })
+        .then(function () {
+          serverSync.pollFailureCount = 0;
+        })
+        .catch(function () {
+          serverSync.pollFailureCount++;
+          if (serverSync.pollFailureCount >= serverSync.maxPollFailures) {
+            clearInterval(serverSync.pollTimer);
+            serverSync.pollTimer = null;
+            serverSetStatus("Server sync: backend unavailable (port 8089) — polling stopped", "warning");
+          } else {
+            serverSetStatus("Server sync: backend unavailable (attempt " + serverSync.pollFailureCount + "/" + serverSync.maxPollFailures + ")", "warning");
+          }
+        });
     }, serverSync.pollMs);
   }
 
@@ -2188,8 +2211,12 @@ function createNormal(prop, generator) {
 
     serverSetStatus(serverSync.isRunner ? "Server runner: loading state" : "Server sync: loading state", "warning");
     serverLoadLatest({ quiet404: true }).catch(function (err) {
-      serverSetStatus("Server sync: " + err.message, "error");
-      console.error("Server sync load failed", err);
+      if (err.message === "Failed to fetch" || err.message === "TypeError") {
+        serverSetStatus("Server sync: no backend (port 8089) — running locally", "warning");
+      } else {
+        serverSetStatus("Server sync: " + err.message, "error");
+        console.error("Server sync load failed", err);
+      }
       return false;
     }).then(function (loaded) {
       if (serverSync.isRunner) {
