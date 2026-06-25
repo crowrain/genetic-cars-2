@@ -1,822 +1,3 @@
-/* ==========================================================================
- * HTML5 Genetic Cars - Single-file bundle (no npm/browserify required)
- * Open index.html directly in a browser.
- * ========================================================================== */
-(function () {
-
-  /* -------------------------------------------------------------------------
-   * machine-learning/random.js
-   * ------------------------------------------------------------------------- */
-
-
-  const random = {
-    shuffleIntegers(prop, generator) {
-      return random.mapToShuffle(prop, random.createNormals({
-        length: prop.length || 10,
-        inclusive: true,
-      }, generator));
-    },
-    createIntegers(prop, generator) {
-      return random.mapToInteger(prop, random.createNormals({
-        length: prop.length,
-        inclusive: true,
-      }, generator));
-    },
-    createFloats(prop, generator) {
-      return random.mapToFloat(prop, random.createNormals({
-        length: prop.length,
-        inclusive: true,
-      }, generator));
-    },
-    createNormals(prop, generator) {
-      var l = prop.length;
-      var values = [];
-      for (var i = 0; i < l; i++) {
-        values.push(
-          createNormal(prop, generator)
-        );
-      }
-      return values;
-    },
-    mapToShuffle(prop, normals) {
-      var offset = prop.offset || 0;
-      var limit = prop.limit || prop.length;
-      var sorted = normals.slice().sort(function (a, b) {
-        return a - b;
-      });
-      // Build rank map once: O(n) instead of indexOf O(n²)
-      var rankMap = new Map();
-      for (var i = 0; i < sorted.length; i++) {
-        if (!rankMap.has(sorted[i])) {
-          rankMap.set(sorted[i], i);
-        }
-      }
-      return normals.map(function (val) {
-        return rankMap.get(val);
-      }).map(function (i) {
-        return i + offset;
-      }).slice(0, limit);
-    },
-    mapToInteger(prop, normals) {
-      prop = {
-        min: prop.min || 0,
-        range: prop.range || 10,
-        length: prop.length
-      }
-      return random.mapToFloat(prop, normals).map(function (float) {
-        return Math.round(float);
-      });
-    },
-    mapToFloat(prop, normals) {
-      prop = {
-        min: prop.min || 0,
-        range: prop.range || 1
-      }
-      return normals.map(function (normal) {
-        var min = prop.min;
-        var range = prop.range;
-        return min + normal * range
-      })
-    },
-    mutateReplace(prop, generator, originalValues, mutation_range, chanceToMutate) {
-      var factor = (prop.factor || 1) * mutation_range;
-      return originalValues.map(function (originalValue) {
-        if (generator() > chanceToMutate) {
-          return originalValue;
-        }
-
-        // Calculate bounds based on the factor, centered around the original value
-        var minBound = Math.max(0, originalValue - (factor / 2));
-        var maxBound = Math.min(1, originalValue + (factor / 2));
-
-        // Pick a completely random flat value within those bounds
-        // Fallback to 0-1 if factor is >= 1 (100% mutation size)
-        if (factor >= 1) {
-          minBound = 0;
-          maxBound = 1;
-        }
-
-        var rangeValue = createNormal({ inclusive: true }, generator);
-        // Map [0, 1] to [minBound, maxBound]
-        return minBound + (rangeValue * (maxBound - minBound));
-      });
-    }
-  };
-
-
-
-/**
- * Create a symmetric (inclusive) normal-distributed random value [0, 1].
- * @param {{inclusive: boolean}} prop - Options for symmetry.
- * @param {function} generator - Random number generator.
- * @returns {number} Random value in [0, 1].
- */
-
-
-function createNormal(prop, generator) {
-    if (!prop.inclusive) {
-      return generator();
-    } else {
-      return generator() < 0.5 ?
-        generator() :
-        1 - generator();
-    }
-  }
-
-
-  /* -------------------------------------------------------------------------
-   * machine-learning/create-instance.js
-   * ------------------------------------------------------------------------- */
-
-
-  var createInstance = {
-    createGenerationZero(schema, generator) {
-      return Object.keys(schema).reduce(function (instance, key) {
-        var schemaProp = schema[key];
-        var values = random.createNormals(schemaProp, generator);
-        instance[key] = values;
-        return instance;
-      }, { id: Math.random().toString(32) });
-    },
-    createCrossBreed(schema, parents, parentChooser) {
-      var id = Math.random().toString(32);
-      return Object.keys(schema).reduce(function (crossDef, key) {
-        var schemaDef = schema[key];
-        var values = [];
-        for (var i = 0, l = schemaDef.length; i < l; i++) {
-          var p = parentChooser(id, key, parents);
-          values.push(parents[p][key][i]);
-        }
-        crossDef[key] = values;
-        return crossDef;
-      }, { id: id });
-    },
-    createMutatedClone(schema, generator, parent, factor, chanceToMutate) {
-      var mutateFn = random.mutateReplace;
-      return Object.keys(schema).reduce(function (clone, key) {
-        var schemaProp = schema[key];
-        var originalValues = parent[key];
-        var values = mutateFn(
-          schemaProp, generator, originalValues, factor, chanceToMutate
-        );
-        clone[key] = values;
-        return clone;
-      }, { id: parent.id });
-    },
-    applyTypes(schema, parent) {
-      return Object.keys(schema).reduce(function (clone, key) {
-        var schemaProp = schema[key];
-        var originalValues = parent[key];
-        var values;
-        switch (schemaProp.type) {
-          case "shuffle":
-            values = random.mapToShuffle(schemaProp, originalValues); break;
-          case "float":
-            values = random.mapToFloat(schemaProp, originalValues); break;
-          case "integer":
-            values = random.mapToInteger(schemaProp, originalValues); break;
-          default:
-            throw new Error(`Unknown type ${schemaProp.type} of schema for key ${key}`);
-        }
-        clone[key] = values;
-        return clone;
-      }, { id: parent.id });
-    },
-  }
-
-  /**
-   * Strip car definition of ancestry metadata for serialization.
-   * @param {Object} def - Full car definition.
-   * @returns {Object} Slim definition without ancestry.
-   */
-
-
-  function cw_slimCarDefinition(def) {
-    return Object.keys(def).reduce(function (clone, key) {
-      if (key !== "ancestry") {
-        clone[key] = def[key];
-      }
-      return clone;
-    }, { id: def.id });
-  }
-
-  /**
-   * Strip an entire generation of ancestry metadata for serialization.
-   * @param {Array} generation - Array of car definitions.
-   * @returns {Array} Slim generation.
-   */
-
-
-  function cw_slimGeneration(generation) {
-    return (generation || []).map(cw_slimCarDefinition);
-  }
-
-
-  /* -------------------------------------------------------------------------
-   * car-schema/car-constants.json (inlined)
-   * ------------------------------------------------------------------------- */
-  var carConstantsData = {
-    "wheelCount": 2,
-    "wheelMinRadius": 0.2,
-    "wheelRadiusRange": 0.5,
-    "wheelMinDensity": 40,
-    "wheelDensityRange": 100,
-    "chassisDensityRange": 300,
-    "chassisMinDensity": 30,
-    "chassisMinAxis": 0.1,
-    "chassisAxisRange": 1.1
-  };
-
-  /* -------------------------------------------------------------------------
-   * car-schema/construct.js
-   * ------------------------------------------------------------------------- */
-
-  var carConstruct = (function () {
-    var carConstants = carConstantsData;
-
-    /**
-     * Build the physics world definition (gravity, dimensions, seed).
-     * @returns {Object} World configuration object.
-     */
-
-
-    function worldDef() {
-      var box2dfps = 60;
-      return {
-        gravity: { y: 0 }, doSleep: true, floorseed: "abc",
-        maxFloorTiles: 200, mutable_floor: false, motorSpeed: 20,
-        box2dfps: box2dfps, max_car_health: box2dfps * 10,
-        tileDimensions: { width: 1.5, height: 0.15 }
-      };
-    }
-/**
-     * Retrieve car physics constants (wheel radius, density, friction, motor torque).
-     * @returns {{wheelRadius: number, wheelDensity: number, wheelFriction: number, motorTorque: number}}
-     */
-    function getCarConstants() { return carConstants; }
-    /**
-     * Build a genetic schema from an array of float values.
-     * Maps raw gene values to the schema structure (chassis, wheels, joints).
-     * @param {number[]} values - Raw gene array.
-     * @returns {Object} Schema object with typed gene arrays.
-     */
-
-
-    function generateSchema(values) {
-      return {
-        wheel_radius: { type: "float", length: values.wheelCount, min: values.wheelMinRadius, range: values.wheelRadiusRange, factor: 1 },
-        wheel_density: { type: "float", length: values.wheelCount, min: values.wheelMinDensity, range: values.wheelDensityRange, factor: 1 },
-        chassis_density: { type: "float", length: 1, min: values.chassisDensityRange, range: values.chassisMinDensity, factor: 1 },
-        vertex_list: { type: "float", length: 12, min: values.chassisMinAxis, range: values.chassisAxisRange, factor: 1 },
-        wheel_vertex: { type: "shuffle", length: 8, limit: values.wheelCount, factor: 1 },
-      };
-    }
-    return { worldDef: worldDef, carConstants: getCarConstants, generateSchema: generateSchema };
-  })();
-
-
-  /* -------------------------------------------------------------------------
-   * car-schema/def-to-car.js
-   * ------------------------------------------------------------------------- */
-  /*
-    globals b2RevoluteJointDef b2Vec2 b2BodyDef b2Body b2FixtureDef b2PolygonShape b2CircleShape
-  */
-
-
-
-
-
-  /**
-   * Convert a genetic schema definition into a physical car (Box2D bodies + joints).
-   * @param {Object} normal_def - Genetic schema with typed values.
-   * @param {b2World} world - Box2D physics world.
-   * @param {Object} constants - Car constants (mass, friction, etc).
-   * @returns {Object} Car with physics bodies and joints.
-   */
-
-
-  function defToCar(normal_def, world, constants) {
-    var car_def = createInstance.applyTypes(constants.schema, normal_def)
-    var instance = {};
-    instance.chassis = createChassis(
-      world, car_def.vertex_list, car_def.chassis_density
-    );
-    var i;
-
-    var wheelCount = car_def.wheel_radius.length;
-
-    instance.wheels = [];
-    for (i = 0; i < wheelCount; i++) {
-      instance.wheels[i] = createWheel(
-        world,
-        car_def.wheel_radius[i],
-        car_def.wheel_density[i]
-      );
-    }
-
-    var carmass = instance.chassis.GetMass();
-    for (i = 0; i < wheelCount; i++) {
-      carmass += instance.wheels[i].GetMass();
-    }
-
-    var joint_def = new b2RevoluteJointDef();
-
-    for (i = 0; i < wheelCount; i++) {
-      var torque = carmass * -constants.gravity.y / car_def.wheel_radius[i];
-
-      var randvertex = instance.chassis.vertex_list[car_def.wheel_vertex[i]];
-      joint_def.localAnchorA.Set(randvertex.x, randvertex.y);
-      joint_def.localAnchorB.Set(0, 0);
-      joint_def.maxMotorTorque = torque;
-      joint_def.motorSpeed = -constants.motorSpeed;
-      joint_def.enableMotor = true;
-      joint_def.bodyA = instance.chassis;
-      joint_def.bodyB = instance.wheels[i];
-      world.CreateJoint(joint_def);
-    }
-
-    return instance;
-  }
-
-  /**
-   * Create a convex polygon chassis body from vertices.
-   * @param {b2World} world - Box2D physics world.
-   * @param {b2Vec2[]} vertexs - Array of chassis vertices.
-   * @param {number} density - Chassis material density.
-   * @returns {b2Body} Chassis body.
-   */
-
-
-  function createChassis(world, vertexs, density) {
-
-    var vertex_list = [];
-    vertex_list.push(new b2Vec2(vertexs[0], 0));
-    vertex_list.push(new b2Vec2(vertexs[1], vertexs[2]));
-    vertex_list.push(new b2Vec2(0, vertexs[3]));
-    vertex_list.push(new b2Vec2(-vertexs[4], vertexs[5]));
-    vertex_list.push(new b2Vec2(-vertexs[6], 0));
-    vertex_list.push(new b2Vec2(-vertexs[7], -vertexs[8]));
-    vertex_list.push(new b2Vec2(0, -vertexs[9]));
-    vertex_list.push(new b2Vec2(vertexs[10], -vertexs[11]));
-
-    var body_def = new b2BodyDef();
-    body_def.type = b2Body.b2_dynamicBody;
-    body_def.position.Set(0.0, 4.0);
-
-    var body = world.CreateBody(body_def);
-
-    createChassisPart(body, vertex_list[0], vertex_list[1], density);
-    createChassisPart(body, vertex_list[1], vertex_list[2], density);
-    createChassisPart(body, vertex_list[2], vertex_list[3], density);
-    createChassisPart(body, vertex_list[3], vertex_list[4], density);
-    createChassisPart(body, vertex_list[4], vertex_list[5], density);
-    createChassisPart(body, vertex_list[5], vertex_list[6], density);
-    createChassisPart(body, vertex_list[6], vertex_list[7], density);
-    createChassisPart(body, vertex_list[7], vertex_list[0], density);
-
-    body.vertex_list = vertex_list;
-
-    return body;
-  }
-
-
-/**
-   * Create a single chassis polygon body in Box2D.
-   * @param {Object} world - Box2D world
-   * @param {number} x - X position
-   * @param {number} y - Y position
-   * @param {number} rotation - Rotation in radians
-   * @param {Array} vertices - Polygon vertices
-   * @param {Object} parentBody - Parent body to attach as fixture
-   * @param {boolean} isWheel - Whether this is a wheel
-   * @returns {Object} The created Box2D body
-   */
-  function createChassisPart(body, vertex1, vertex2, density) {
-    var vertex_list = [];
-    vertex_list.push(vertex1);
-    vertex_list.push(vertex2);
-    vertex_list.push(b2Vec2.Make(0, 0));
-    var fix_def = new b2FixtureDef();
-    fix_def.shape = new b2PolygonShape();
-    fix_def.density = density;
-    fix_def.friction = 10;
-    fix_def.restitution = 0.2;
-    fix_def.filter.groupIndex = -1;
-    fix_def.shape.SetAsArray(vertex_list, 3);
-
-    body.CreateFixture(fix_def);
-  }
-
-  /**
-   * Create a circular wheel body with physics fixtures.
-   * @param {b2World} world - Box2D physics world.
-   * @param {number} radius - Wheel radius in meters.
-   * @param {number} density - Wheel material density.
-   * @returns {b2Body} Wheel body.
-   */
-
-
-  function createWheel(world, radius, density) {
-    var body_def = new b2BodyDef();
-    body_def.type = b2Body.b2_dynamicBody;
-    body_def.position.Set(0, 0);
-
-    var body = world.CreateBody(body_def);
-
-    var fix_def = new b2FixtureDef();
-    fix_def.shape = new b2CircleShape(radius);
-    fix_def.density = density;
-    fix_def.friction = 1;
-    fix_def.restitution = 0.2;
-    fix_def.filter.groupIndex = -1;
-
-    body.CreateFixture(fix_def);
-    return body;
-  }
-
-
-  /* -------------------------------------------------------------------------
-   * car-schema/run.js
-   * ------------------------------------------------------------------------- */
-
-
-  var carRun = {
-    getInitialState: getInitialState,
-    updateState: updateState,
-    getStatus: getStatus,
-    calculateScore: calculateScore,
-  };
-
-  /**
-   * Build the initial physics state for a car (positions, velocities).
-   * @param {Object} world_def - World configuration.
-   * @returns {Object} Initial state with body transforms and velocities.
-   */
-
-
-  function getInitialState(world_def) {
-    return {
-      frames: 0,
-      health: world_def.max_car_health,
-      maxPositiony: 0,
-      minPositiony: 0,
-      maxPositionx: 0,
-    };
-  }
-
-  /**
-   * Step physics simulation: apply forces, update state, check status.
-   * @param {Object} constants - Car physics constants.
-   * @param {Function} worldConstruct - Function to recreate world each step.
-   * @param {Object} state - Current car state.
-   * @returns {Object} Updated state with status.
-   */
-
-
-  function updateState(constants, worldConstruct, state) {
-    if (state.health <= 0) {
-      throw new Error("Already Dead");
-    }
-    if (state.maxPositionx > constants.finishLine) {
-      throw new Error("already Finished");
-    }
-
-    // check health
-    var position = worldConstruct.chassis.GetPosition();
-    // check if car reached end of the path
-    var nextState = {
-      frames: state.frames + 1,
-      maxPositionx: position.x > state.maxPositionx ? position.x : state.maxPositionx,
-      maxPositiony: position.y > state.maxPositiony ? position.y : state.maxPositiony,
-      minPositiony: position.y < state.minPositiony ? position.y : state.minPositiony
-    };
-
-    if (position.x > constants.finishLine) {
-      nextState.health = state.health;
-      return nextState;
-    }
-
-    if (position.x > state.maxPositionx + 0.02) {
-      nextState.health = constants.max_car_health;
-      return nextState;
-    }
-    nextState.health = state.health - 1;
-    if (Math.abs(worldConstruct.chassis.GetLinearVelocity().x) < 0.001) {
-      nextState.health -= 5;
-    }
-    return nextState;
-  }
-
-  /**
-   * Determine car status based on position relative to track bounds.
-   * @param {Object} state - Current car state.
-   * @param {Object} constants - Car constants.
-   * @returns {number} Status code (0=alive, 1=failed, 2=success).
-   */
-
-
-  function getStatus(state, constants) {
-    if (hasFailed(state, constants)) return -1;
-    if (hasSuccess(state, constants)) return 1;
-    return 0;
-  }
-
-  function hasFailed(state /*, constants */) {
-    return state.health <= 0;
-  }
-  function hasSuccess(state, constants) {
-    return state.maxPositionx > constants.finishLine;
-  }
-
-  function calculateScore(state, constants) {
-    var avgspeed = (state.maxPositionx / state.frames) * constants.box2dfps;
-    var position = state.maxPositionx;
-    var score = position + avgspeed;
-    return {
-      v: score,
-      s: avgspeed,
-      x: position,
-      y: state.maxPositiony,
-      y2: state.minPositiony
-    }
-  }
-
-
-  /* -------------------------------------------------------------------------
-   * generation-config/selectFromAllParents.js
-   * ------------------------------------------------------------------------- */
-
-  function flatRankSelect(parents) {
-    var totalParents = parents.length;
-    var parentIndex = -1;
-    for (var k = 0; k < totalParents; k++) {
-      if (Math.random() <= 0.2) {
-        parentIndex = k;
-        break;
-      }
-    }
-    if (parentIndex === -1) {
-      parentIndex = Math.floor(Math.random() * totalParents);
-    }
-    return parentIndex;
-  }
-
-
-  /* -------------------------------------------------------------------------
-   * generation-config/pickParent.js
-   * ------------------------------------------------------------------------- */
-  var nAttributes = 15;
-
-
-  function pickParent(currentChoices, chooseId, key /* , parents */) {
-    if (!currentChoices.has(chooseId)) {
-      currentChoices.set(chooseId, initializePick())
-    }
-
-    var state = currentChoices.get(chooseId);
-    state.i++
-    if (key === "wheel_radius" || key === "wheel_vertex" || key === "wheel_density") {
-      state.curparent = cw_chooseParent(state);
-      return state.curparent;
-    }
-    state.curparent = cw_chooseParent(state);
-    return state.curparent;
-
-/**
-     * Select a parent using tournament selection for genetic algorithm.
-     * @param {Object} state - Selection state
-     * @returns {Object} Selected parent
-     */
-    function cw_chooseParent(state) {
-      var curparent = state.curparent;
-      var attributeIndex = state.i;
-      var swapPoint1 = state.swapPoint1
-      var swapPoint2 = state.swapPoint2
-      if ((swapPoint1 == attributeIndex) || (swapPoint2 == attributeIndex)) {
-        return curparent == 1 ? 0 : 1
-      }
-      return curparent
-    }
-
-/**
-     * Initialize the random number generator for parent selection.
-     */
-    function initializePick() {
-      var curparent = 0;
-
-      var swapPoint1 = Math.floor(Math.random() * (nAttributes));
-      var swapPoint2 = swapPoint1;
-      while (swapPoint2 == swapPoint1) {
-        swapPoint2 = Math.floor(Math.random() * (nAttributes));
-      }
-      var i = 0;
-      return {
-        curparent: curparent,
-        i: i,
-        swapPoint1: swapPoint1,
-        swapPoint2: swapPoint2
-      }
-    }
-  }
-
-
-  /* -------------------------------------------------------------------------
-   * generation-config/generateRandom.js
-   * ------------------------------------------------------------------------- */
-
-
-  function generateRandom() {
-    return Math.random();
-  }
-
-
-  /* -------------------------------------------------------------------------
-   * generation-config/index.js
-   * ------------------------------------------------------------------------- */
-
-  var generationConfig = (function () {
-    var carConstants = carConstruct.carConstants();
-    var schema = carConstruct.generateSchema(carConstants);
-    var constants = {
-      generationSize: 20, schema: schema, championLength: 1,
-      mutation_range: 1, gen_mutation: 0.05
-    };
-    var fn = function () {
-      var currentChoices = new Map();
-      return Object.assign({}, constants, {
-        selectFromAllParents: flatRankSelect,
-        generateRandom: generateRandom,
-        pickParent: pickParent.bind(void 0, currentChoices),
-      });
-    };
-    fn.constants = constants;
-    return fn;
-  })();
-
-
-  /* -------------------------------------------------------------------------
-   * machine-learning/genetic-algorithm/manage-round.js
-   * ------------------------------------------------------------------------- */
-  var manageRound = (function () {
-    var create = createInstance;
-
-
-
-    function generationZero(config) {
-      var generationSize = config.generationSize,
-        schema = config.schema;
-      var cw_carGeneration = [];
-      for (var k = 0; k < generationSize; k++) {
-        var def = create.createGenerationZero(schema, function () {
-          return Math.random()
-        });
-        def.index = k;
-        cw_carGeneration.push(def);
-      }
-      return {
-        counter: 0,
-        generation: cw_carGeneration,
-      };
-    }
-
-    /**
-     * Evolve to the next generation: select parents, crossover, mutate.
-     * @param {Object} config - Generation config (mutation rate, elite size).
-     * @param {number} generationSize - Population size.
-     * @param {Function} chooser - Parent selection function.
-     * @param {Object[]} lastGen - Parent generation.
-     * @param {Object} schema - Genetic schema template.
-     * @returns {Object[]} New generation.
-     */
-
-
-    /**
-     * Copy elite car definitions from the previous generation into the new one.
-     * Elite cars are cloned without modification.
-     * @param {Object} previousState - Previous generation state with .counter
-     * @param {Array} scores - Sorted car results (best first)
-     * @param {Object} config - Generation config with .championLength
-     * @returns {Object} State with updated counter and elite population
-     */
-    function copyEliteCars(previousState, scores, config) {
-      var newGeneration = [];
-      for (var k = 0; k < config.championLength; k++) {
-        var elite = cw_slimCarDefinition(scores[k].def);
-        elite.is_elite = true;
-        elite.index = k;
-        newGeneration.push(elite);
-      }
-      return {
-        counter: previousState.counter + 1,
-        generation: newGeneration,
-      };
-    }
-
-    /**
-     * Breed remaining slots in the new generation using tournament selection,
-     * crossover, and mutation.
-     * @param {Array} scores - Sorted car results (best first)
-     * @param {Array} newGeneration - Current new generation (will be mutated)
-     * @param {Object} config - Generation config with .generationSize and .selectFromAllParents
-     * @param {Array} parentList - Track of used parent pairs (prevents duplicates)
-     */
-    function breedRemaining(scores, newGeneration, config, parentList) {
-      for (var k = config.championLength; k < config.generationSize; k++) {
-        var parent1 = config.selectFromAllParents(scores, parentList);
-        var parent2 = parent1;
-        while (parent2 == parent1) {
-          parent2 = config.selectFromAllParents(scores, parentList, parent1);
-        }
-        var pair = [parent1, parent2]
-        parentList.push(pair);
-        var newborn = makeChild(config,
-          pair.map(function (parent) { return scores[parent].def; })
-        );
-        newborn = mutate(config, newborn);
-        newborn.is_elite = false;
-        newborn.index = k;
-        newGeneration.push(newborn);
-      }
-    }
-
-    function nextGeneration(
-      previousState,
-      scores,
-      config
-    ) {
-      var champion_length = config.championLength,
-        generationSize = config.generationSize,
-        selectFromAllParents = config.selectFromAllParents;
-
-      // Copy elite cars first
-      var state = copyEliteCars(previousState, scores, config);
-      var newGeneration = state.generation;
-
-      // Breed remaining slots
-      var parentList = [];
-      breedRemaining(scores, newGeneration, config, parentList);
-
-      return {
-        counter: state.counter,
-        generation: newGeneration,
-      };
-    }
-
-
-    /**
-     * Create a child car from two parents via crossover, then mutate.
-     * @param {Object} config - Mutation config.
-     * @param {Object[]} parents - Two parent car definitions.
-     * @returns {Object} Child car definition.
-     */
-
-
-    function makeChild(config, parents) {
-      var schema = config.schema,
-        pickParent = config.pickParent;
-      return create.createCrossBreed(schema, parents, pickParent)
-    }
-
-
-    function mutate(config, parent) {
-      var schema = config.schema,
-        mutation_range = config.mutation_range,
-        gen_mutation = config.gen_mutation,
-        generateRandom = config.generateRandom;
-      return create.createMutatedClone(
-        schema,
-        generateRandom,
-        parent,
-        mutation_range,
-        gen_mutation
-      )
-    }
-
-    return { generationZero: generationZero, nextGeneration: nextGeneration };
-  })();
-
-
-  /* Ghost module is now loaded from src/ghost.js */
-
-
-  /* -------------------------------------------------------------------------
-   * draw/draw-virtual-poly.js
-   * ------------------------------------------------------------------------- */
-
-
-  function cw_drawVirtualPoly(ctx, body, vtx, n_vtx) {
-    // set strokestyle and fillstyle before call
-    // call beginPath before call
-
-    var p0 = body.GetWorldPoint(vtx[0]);
-    ctx.moveTo(p0.x, p0.y);
-    for (var i = 1; i < n_vtx; i++) {
-      var p = body.GetWorldPoint(vtx[i]);
-      ctx.lineTo(p.x, p.y);
-    }
-    ctx.lineTo(p0.x, p0.y);
-  }
-
 
   /* -------------------------------------------------------------------------
    * draw/draw-circle.js
@@ -1143,7 +324,7 @@ function createNormal(prop, generator) {
    * ------------------------------------------------------------------------- */
 
 
-  var run = carRun;
+  var run = genetics.carRun;
 
   /* ========================================================================= */
   /* === Car ================================================================= */
@@ -1370,7 +551,7 @@ function createNormal(prop, generator) {
         index: i,
         def: def,
         car: defToCar(def, scene.world, world_def),
-        state: carRun.getInitialState(world_def)
+        state: genetics.carRun.getInitialState(world_def)
       };
     });
     var alivecars = cars;
@@ -1384,10 +565,10 @@ function createNormal(prop, generator) {
      * @returns {number} Run status code
      */
     function updateCarStep(car, world_def, listeners) {
-      car.state = carRun.updateState(
+      car.state = genetics.carRun.updateState(
         world_def, car.car, car.state
       );
-      var status = carRun.getStatus(car.state, world_def);
+      var status = genetics.carRun.getStatus(car.state, world_def);
       listeners.carStep(car);
       return status;
     }
@@ -1420,7 +601,7 @@ function createNormal(prop, generator) {
           if (status === 0) {
             return true;
           }
-          car.score = carRun.calculateScore(car.state, world_def);
+          car.score = genetics.carRun.calculateScore(car.state, world_def);
           listeners.carDeath(car);
           cleanupDeadCar(car, scene.world);
           return false;
@@ -1491,7 +672,7 @@ function createNormal(prop, generator) {
   var fogdistance = document.getElementById("minimapfog").style;
 
 
-  var carConstants = carConstruct.carConstants();
+  var carConstants = genetics.carConstants();
 
 
   var max_car_health = box2dfps * 10;
@@ -1522,7 +703,7 @@ function createNormal(prop, generator) {
     box2dfps: box2dfps,
     motorSpeed: 20,
     max_car_health: max_car_health,
-    schema: generationConfig.constants.schema
+    schema: genetics.generationConfig.constants.schema
   }
 
   var cw_deadCars;
@@ -1634,7 +815,7 @@ function createNormal(prop, generator) {
       version: 1,
       reason: reason || "generation",
       generation: Number(generationState && generationState.counter || 0),
-      savedGeneration: generationState && generationState.generation ? cw_slimGeneration(generationState.generation) : [],
+      savedGeneration: generationState && generationState.generation ? genetics.cw_slimGeneration(generationState.generation) : [],
       ghost: options.includeGhost === false ? null : ghost,
       graphState: normalizeGraphState(graphState),
       floorSeed: world_def.floorseed,
@@ -1642,9 +823,9 @@ function createNormal(prop, generator) {
       runnerId: serverSync.runnerId,
       savedAt: new Date().toISOString(),
       config: {
-        mutationRate: generationConfig.constants.gen_mutation,
-        mutationRange: generationConfig.constants.mutation_range,
-        eliteSize: generationConfig.constants.championLength,
+        mutationRate: genetics.generationConfig.constants.gen_mutation,
+        mutationRange: genetics.generationConfig.constants.mutation_range,
+        eliteSize: genetics.generationConfig.constants.championLength,
         mutableFloor: world_def.mutable_floor,
         gravity: world_def.gravity.y
       }
@@ -1945,7 +1126,7 @@ function createNormal(prop, generator) {
 
   function cw_generationZero() {
 
-    generationState = manageRound.generationZero(generationConfig());
+    generationState = genetics.manageRound.generationZero(genetics.generationConfig());
   }
 
   function resetCarUI() {
@@ -1955,7 +1136,7 @@ function createNormal(prop, generator) {
     };
     document.getElementById("generation").innerHTML = generationState.counter.toString();
     document.getElementById("cars").innerHTML = "";
-    document.getElementById("population").innerHTML = generationConfig.constants.generationSize.toString();
+    document.getElementById("population").innerHTML = genetics.generationConfig.constants.generationSize.toString();
   }
 
   /* ==== END Genration ====================================================== */
@@ -2178,7 +1359,7 @@ function createNormal(prop, generator) {
       score.i = generationState.counter;
 
       cw_deadCars++;
-      var generationSize = generationConfig.constants.generationSize;
+      var generationSize = genetics.generationConfig.constants.generationSize;
       document.getElementById("population").innerHTML = (generationSize - cw_deadCars).toString();
 
       if (leaderPosition.leader == k) {
@@ -2312,8 +1493,8 @@ function createNormal(prop, generator) {
     // resulting in exact identical clones every generation if the parents
     // happen to have the same scores.
     Math.seedrandom();
-    generationState = manageRound.nextGeneration(
-      generationState, results, generationConfig()
+    generationState = genetics.manageRound.nextGeneration(
+      generationState, results, genetics.generationConfig()
     );
   }
 
@@ -2562,7 +1743,7 @@ function createNormal(prop, generator) {
     // clone silver dot and health bar
     var mmm = document.getElementsByName('minimapmarker')[0];
     var hbar = document.getElementsByName('healthbar')[0];
-    var generationSize = generationConfig.constants.generationSize;
+    var generationSize = genetics.generationConfig.constants.generationSize;
 
     for (var k = 0; k < generationSize; k++) {
 
@@ -2668,7 +1849,7 @@ function createNormal(prop, generator) {
    * @param {number} mutation - Mutation rate percentage
    */
   function cw_setMutation(mutation) {
-    generationConfig.constants.gen_mutation = parseFloat(mutation);
+    genetics.generationConfig.constants.gen_mutation = parseFloat(mutation);
   }
 
 /**
@@ -2676,7 +1857,7 @@ function createNormal(prop, generator) {
    * @param {number} range - Mutation range percentage
    */
   function cw_setMutationRange(range) {
-    generationConfig.constants.mutation_range = parseFloat(range);
+    genetics.generationConfig.constants.mutation_range = parseFloat(range);
   }
 
 /**
@@ -2705,7 +1886,7 @@ function createNormal(prop, generator) {
    * @param {number} clones - Number of elite clones
    */
   function cw_setEliteSize(clones) {
-    generationConfig.constants.championLength = parseInt(clones, 10);
+    genetics.generationConfig.constants.championLength = parseInt(clones, 10);
   }
 
 // Expose to global scope for inline onclick handlers in index.html
