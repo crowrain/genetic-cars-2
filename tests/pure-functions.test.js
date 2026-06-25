@@ -535,3 +535,278 @@ describe('ghost_move_frame', () => {
     expect(() => testGhostFns.ghost_move_frame(ghost)).not.toThrow();
   });
 });
+
+
+// ============================================================
+// Genetics Module Tests (src/genetics.js)
+// ============================================================
+
+// --- calculateScore ---
+function genetics_calculateScore(state, constants) {
+    var avgspeed = (state.maxPositionx / state.frames) * constants.box2dfps;
+    var position = state.maxPositionx;
+    var score = position + avgspeed;
+    return {
+      v: score,
+      s: avgspeed,
+      x: position,
+      y: state.maxPositiony,
+      y2: state.minPositiony
+    };
+}
+
+// --- getStatus / hasFailed / hasSuccess ---
+function genetics_hasFailed(state) {
+    return state.health <= 0;
+}
+
+function genetics_hasSuccess(state, constants) {
+    return state.maxPositionx > constants.finishLine;
+}
+
+function genetics_getStatus(state, constants) {
+    if (genetics_hasFailed(state, constants)) return -1;
+    if (genetics_hasSuccess(state, constants)) return 1;
+    return 0;
+}
+
+// --- cw_slimCarDefinition ---
+function genetics_cw_slimCarDefinition(def) {
+    return Object.keys(def).reduce(function (clone, key) {
+      if (key !== "ancestry") {
+        clone[key] = def[key];
+      }
+      return clone;
+    }, { id: def.id });
+}
+
+// --- cw_slimGeneration ---
+function genetics_cw_slimGeneration(generation) {
+    return (generation || []).map(genetics_cw_slimCarDefinition);
+}
+
+// --- flatRankSelect ---
+function genetics_flatRankSelect(parents) {
+    var totalParents = parents.length;
+    var parentIndex = -1;
+    for (var k = 0; k < totalParents; k++) {
+      if (Math.random() <= 0.2) {
+        parentIndex = k;
+        break;
+      }
+    }
+    if (parentIndex === -1) {
+      parentIndex = Math.floor(Math.random() * totalParents);
+    }
+    return parentIndex;
+}
+
+// --- initializePick ---
+function genetics_initializePick() {
+    var swapPoint1 = Math.floor(Math.random() * 15);
+    var swapPoint2 = swapPoint1;
+    while (swapPoint2 == swapPoint1) {
+      swapPoint2 = Math.floor(Math.random() * 15);
+    }
+    return {
+      curparent: 0,
+      i: 0,
+      swapPoint1: swapPoint1,
+      swapPoint2: swapPoint2
+    };
+}
+
+describe('genetics_calculateScore', () => {
+  const constants = { box2dfps: 60, finishLine: 300 };
+
+  test('returns score object with v, s, x, y, y2', () => {
+    const state = {
+      frames: 100,
+      maxPositionx: 10,
+      maxPositiony: 2,
+      minPositiony: -1,
+      health: 50
+    };
+    const result = genetics_calculateScore(state, constants);
+    expect(result).toHaveProperty('v');
+    expect(result).toHaveProperty('s');
+    expect(result).toHaveProperty('x', 10);
+    expect(result).toHaveProperty('y', 2);
+    expect(result).toHaveProperty('y2', -1);
+  });
+
+  test('average speed = (position / frames) * box2dfps', () => {
+    const state = {
+      frames: 100,
+      maxPositionx: 20,
+      maxPositiony: 0,
+      minPositiony: 0,
+      health: 50
+    };
+    const result = genetics_calculateScore(state, constants);
+    expect(result.s).toBe((20 / 100) * 60);
+  });
+
+  test('score = position + avgspeed', () => {
+    const state = {
+      frames: 50,
+      maxPositionx: 15,
+      maxPositiony: 0,
+      minPositiony: 0,
+      health: 50
+    };
+    const result = genetics_calculateScore(state, constants);
+    expect(result.v).toBe(15 + (15 / 50 * 60));
+  });
+
+  test('handles zero distance', () => {
+    const state = {
+      frames: 100,
+      maxPositionx: 0,
+      maxPositiony: 0,
+      minPositiony: 0,
+      health: 50
+    };
+    const result = genetics_calculateScore(state, constants);
+    expect(result.v).toBe(0);
+  });
+});
+
+describe('genetics_getStatus', () => {
+  const constants = { finishLine: 300, max_car_health: 50 };
+
+  test('returns -1 for failed car (health <= 0)', () => {
+    const state = { health: 0, maxPositionx: 10, frames: 100 };
+    expect(genetics_getStatus(state, constants)).toBe(-1);
+  });
+
+  test('returns -1 for failed car (health < 0)', () => {
+    const state = { health: -5, maxPositionx: 10, frames: 100 };
+    expect(genetics_getStatus(state, constants)).toBe(-1);
+  });
+
+  test('returns 1 for successful car (past finish line)', () => {
+    const state = { health: 30, maxPositionx: 301, frames: 100 };
+    expect(genetics_getStatus(state, constants)).toBe(1);
+  });
+
+  test('returns 0 for alive car (healthy and not finished)', () => {
+    const state = { health: 25, maxPositionx: 150, frames: 50 };
+    expect(genetics_getStatus(state, constants)).toBe(0);
+  });
+
+  test('health check takes priority over success', () => {
+    const state = { health: -1, maxPositionx: 350, frames: 100 };
+    expect(genetics_getStatus(state, constants)).toBe(-1);
+  });
+
+  test('exactly at finish line is not success', () => {
+    const state = { health: 10, maxPositionx: 300, frames: 100 };
+    expect(genetics_getStatus(state, constants)).toBe(0);
+  });
+});
+
+describe('genetics_cw_slimCarDefinition', () => {
+  test('removes ancestry property', () => {
+    const def = {
+      id: 'car-1',
+      wheel_radius: [0.3, 0.4],
+      ancestry: { parent1: 'a', parent2: 'b' }
+    };
+    const slim = genetics_cw_slimCarDefinition(def);
+    expect(slim).not.toHaveProperty('ancestry');
+    expect(slim).toHaveProperty('id', 'car-1');
+    expect(slim).toHaveProperty('wheel_radius');
+  });
+
+  test('preserves all other properties', () => {
+    const def = {
+      id: 'car-2',
+      wheel_radius: [0.5, 0.6],
+      chassis_width: [1.5],
+      some_other: [42]
+    };
+    const slim = genetics_cw_slimCarDefinition(def);
+    expect(slim).toEqual({
+      id: 'car-2',
+      wheel_radius: [0.5, 0.6],
+      chassis_width: [1.5],
+      some_other: [42]
+    });
+  });
+
+  test('handles definition with no ancestry', () => {
+    const def = { id: 'car-3', wheel_radius: [0.3] };
+    const slim = genetics_cw_slimCarDefinition(def);
+    expect(slim).toEqual({ id: 'car-3', wheel_radius: [0.3] });
+  });
+});
+
+describe('genetics_cw_slimGeneration', () => {
+  test('strips ancestry from all cars in generation', () => {
+    const gen = [
+      { id: 'a', wheel_radius: [0.3], ancestry: { parent1: 'x' } },
+      { id: 'b', wheel_radius: [0.4], ancestry: { parent2: 'y' } }
+    ];
+    const slim = genetics_cw_slimGeneration(gen);
+    expect(slim.length).toBe(2);
+    slim.forEach(car => expect(car).not.toHaveProperty('ancestry'));
+  });
+
+  test('returns empty array for null input', () => {
+    expect(genetics_cw_slimGeneration(null)).toEqual([]);
+  });
+
+  test('returns empty array for empty input', () => {
+    expect(genetics_cw_slimGeneration([])).toEqual([]);
+  });
+});
+
+describe('genetics_flatRankSelect', () => {
+  test('returns index within valid range', () => {
+    const parents = [{}, {}, {}, {}, {}];
+    for (let i = 0; i < 100; i++) {
+      const idx = genetics_flatRankSelect(parents);
+      expect(idx).toBeGreaterThanOrEqual(0);
+      expect(idx).toBeLessThan(parents.length);
+    }
+  });
+
+  test('returns 0 for single parent', () => {
+    const parents = [{ genes: [1] }];
+    expect(genetics_flatRankSelect(parents)).toBe(0);
+  });
+
+  test('favors earlier parents due to 20% threshold', () => {
+    const parents = Array(20).fill(null).map((_, i) => i);
+    const results = [];
+    for (let i = 0; i < 500; i++) {
+      results.push(genetics_flatRankSelect(parents));
+    }
+    const avgIndex = results.reduce((a, b) => a + b, 0) / results.length;
+    expect(avgIndex).toBeLessThan(10);
+  });
+});
+
+describe('genetics_initializePick', () => {
+  test('returns object with curparent = 0', () => {
+    const pick = genetics_initializePick();
+    expect(pick.curparent).toBe(0);
+    expect(pick.i).toBe(0);
+  });
+
+  test('swap points are within [0, 15)', () => {
+    const pick = genetics_initializePick();
+    expect(pick.swapPoint1).toBeGreaterThanOrEqual(0);
+    expect(pick.swapPoint1).toBeLessThan(15);
+    expect(pick.swapPoint2).toBeGreaterThanOrEqual(0);
+    expect(pick.swapPoint2).toBeLessThan(15);
+  });
+
+  test('swap points are always different', () => {
+    for (let i = 0; i < 100; i++) {
+      const pick = genetics_initializePick();
+      expect(pick.swapPoint1).not.toEqual(pick.swapPoint2);
+    }
+  });
+});
