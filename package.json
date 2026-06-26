@@ -26,5 +26,8 @@
   "bugs": {
     "url": "https://github.com/crowrain/genetic-cars-2/issues"
   },
-  "homepage": "https://github.com/crowrain/genetic-cars-2#readme"
+  "homepage": "https://github.com/crowrain/genetic-cars-2#readme",
+  "dependencies": {
+    "playwright": "^1.61.1"
+  }
 }

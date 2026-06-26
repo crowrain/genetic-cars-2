@@ -173,7 +173,7 @@ var genetics = (function () {
    * car-schema/car-constants.json (inlined)
    * ------------------------------------------------------------------------- */
   var carConstantsData = {
-    "wheelCount": 2,
+    "maxWheelCount": 8,
     "wheelMinRadius": 0.2,
     "wheelRadiusRange": 0.5,
     "wheelMinDensity": 40,
@@ -194,11 +194,12 @@ var genetics = (function () {
     },
     generateSchema: function (values) {
       return {
-        wheel_radius: { type: "float", length: values.wheelCount, min: values.wheelMinRadius, range: values.wheelRadiusRange, factor: 1 },
-        wheel_density: { type: "float", length: values.wheelCount, min: values.wheelMinDensity, range: values.wheelDensityRange, factor: 1 },
+        wheel_count: { type: "integer", length: 1, min: 1, range: values.maxWheelCount, factor: 1 },
+        wheel_radius: { type: "float", length: values.maxWheelCount, min: values.wheelMinRadius, range: values.wheelRadiusRange, factor: 1 },
+        wheel_density: { type: "float", length: values.maxWheelCount, min: values.wheelMinDensity, range: values.wheelDensityRange, factor: 1 },
         chassis_density: { type: "float", length: 1, min: values.chassisDensityRange, range: values.chassisMinDensity, factor: 1 },
         vertex_list: { type: "float", length: 12, min: values.chassisMinAxis, range: values.chassisAxisRange, factor: 1 },
-        wheel_vertex: { type: "shuffle", length: values.wheelCount, limit: 8, factor: 1 },
+        wheel_vertex: { type: "shuffle", length: values.maxWheelCount, limit: 8, factor: 1 },
       };
     }
   };
@@ -260,7 +261,7 @@ var genetics = (function () {
   /* -------------------------------------------------------------------------
    * generation-config/pickParent.js
    * ------------------------------------------------------------------------- */
-  var nAttributes = 15;
+  var nAttributes = 38; // wheel_count(1) + wheel_radius(8) + wheel_density(8) + chassis_density(1) + vertex_list(12) + wheel_vertex(8)
 
   function pickParent(currentChoices, chooseId, key) {
     if (!currentChoices.has(chooseId)) {
@@ -509,7 +510,11 @@ var genetics = (function () {
     );
     var i;
 
-    var wheelCount = car_def.wheel_radius.length;
+    // Read wheel count from genetic definition (evolved!)
+    var wheelCount = Math.min(
+      car_def.wheel_count[0],
+      car_def.wheel_radius.length
+    );
 
     instance.wheels = [];
     for (i = 0; i < wheelCount; i++) {
