@@ -129,6 +129,13 @@ var genetics = (function () {
       return Object.keys(schema).reduce(function (clone, key) {
         var schemaProp = schema[key];
         var originalValues = parent[key];
+
+        // Backwards compatibility: if a gene is missing (schema changed),
+        // fill with random values matching the schema length
+        if (!originalValues || originalValues.length === 0) {
+          originalValues = Array(schemaProp.length).fill(0.5);
+        }
+
         var values;
         switch (schemaProp.type) {
           case "shuffle":
