@@ -1,3 +1,5 @@
+(function () {
+
 
   /* -------------------------------------------------------------------------
    * draw/draw-circle.js
@@ -17,6 +19,25 @@
 
     ctx.fill();
     ctx.stroke();
+  }
+
+
+   /* -------------------------------------------------------------------------
+   * draw/draw-virtual-poly.js
+   * ------------------------------------------------------------------------- */
+
+
+  function cw_drawVirtualPoly(ctx, body, vtx, n_vtx) {
+    // set strokestyle and fillstyle before call
+    // call beginPath before call
+
+    var p0 = body.GetWorldPoint(vtx[0]);
+    ctx.moveTo(p0.x, p0.y);
+    for (var i = 1; i < n_vtx; i++) {
+      var p = body.GetWorldPoint(vtx[i]);
+      ctx.lineTo(p.x, p.y);
+    }
+    ctx.lineTo(p0.x, p0.y);
   }
 
 
@@ -550,7 +571,7 @@
       return {
         index: i,
         def: def,
-        car: defToCar(def, scene.world, world_def),
+        car: genetics.defToCar(def, scene.world, world_def),
         state: genetics.carRun.getInitialState(world_def)
       };
     });
@@ -1073,15 +1094,14 @@
     }
     serverSync.runnerStarted = true;
     document.body.classList.add("runner-mode");
-    if (doDraw) {
-      toggleDisplay();
-    }
     queueServerSave("runner-start");
     serverSync.heartbeatTimer = setInterval(function () {
       queueServerSave("heartbeat");
     }, 30000);
     window.__boxcarRunnerReady = true;
     serverSetStatus("Server runner: evolving generation " + generationState.counter, "running");
+    cw_paused = false;
+    cw_startSimulation();
   }
 
 /**

@@ -175,79 +175,31 @@ var genetics = (function () {
   var carConstantsData = {
     "wheelCount": 2,
     "wheelMinRadius": 0.2,
-    "wheelMaxRadius": 0.5,
-    "wheelMinDensity": 0.2,
-    "wheelMaxDensity": 0.8,
-    "wheelMinVertex": 4,
-    "wheelMaxVertex": 12,
-    "wheelJointMin": -0.5,
-    "wheelJointMax": 0.5,
-    "wheelJointMotorSpeedMin": 5,
-    "wheelJointMotorSpeedMax": 30,
-    "wheelJointMotorForceMin": 50,
-    "wheelJointMotorForceMax": 200,
-    "chassisDensity": 0.5,
-    "chassisVertexCountMin": 3,
-    "chassisVertexCountMax": 8,
-    "chassisWidthMin": 1,
-    "chassisWidthMax": 3,
-    "chassisHeightMin": 0.3,
-    "chassisHeightMax": 1,
-    "box2dPixelsPerMeter": 32,
-    "finishLine": 300,
-    "max_car_health": 50
+    "wheelRadiusRange": 0.5,
+    "wheelMinDensity": 40,
+    "wheelDensityRange": 100,
+    "chassisDensityRange": 300,
+    "chassisMinDensity": 30,
+    "chassisMinAxis": 0.1,
+    "chassisAxisRange": 1.1
   };
 
   /* -------------------------------------------------------------------------
-   * car-schema/car-construct.js (schema generation — pure)
+   * car-schema/construct.js (original schema — matches defToCar expectations)
    * ------------------------------------------------------------------------- */
 
   var carConstruct = {
     carConstants: function () {
       return carConstantsData;
     },
-    generateSchema: function (carConstants) {
-      var schema = {};
-      var totalGenes = 0;
-      var chassisVertexCount = [];
-      for (var i = carConstants.chassisVertexCountMin; i <= carConstants.chassisVertexCountMax; i++) {
-        chassisVertexCount.push(i);
-      }
-      schema.chassis_vertex_count = {
-        type: "shuffle", length: 1, min: 0, range: chassisVertexCount.length, factor: 1
+    generateSchema: function (values) {
+      return {
+        wheel_radius: { type: "float", length: values.wheelCount, min: values.wheelMinRadius, range: values.wheelRadiusRange, factor: 1 },
+        wheel_density: { type: "float", length: values.wheelCount, min: values.wheelMinDensity, range: values.wheelDensityRange, factor: 1 },
+        chassis_density: { type: "float", length: 1, min: values.chassisDensityRange, range: values.chassisMinDensity, factor: 1 },
+        vertex_list: { type: "float", length: 12, min: values.chassisMinAxis, range: values.chassisAxisRange, factor: 1 },
+        wheel_vertex: { type: "shuffle", length: 8, limit: values.wheelCount, factor: 1 },
       };
-      totalGenes += 1;
-
-      for (var v = 0; v < carConstants.chassisVertexCountMax; v++) {
-        schema['chassis_vertex_' + v + '_x'] = { type: "float", length: 1, min: 0, range: 1 };
-        schema['chassis_vertex_' + v + '_y'] = { type: "float", length: 1, min: 0, range: 1 };
-        totalGenes += 2;
-      }
-
-      schema.chassis_width = { type: "float", length: 1, min: carConstants.chassisWidthMin, range: (carConstants.chassisWidthMax - carConstants.chassisWidthMin) };
-      schema.chassis_height = { type: "float", length: 1, min: carConstants.chassisHeightMin, range: (carConstants.chassisHeightMax - carConstants.chassisHeightMin) };
-      totalGenes += 2;
-
-      var wheelVertex = [];
-      for (var wv = carConstants.wheelMinVertex; wv <= carConstants.wheelMaxVertex; wv++) {
-        wheelVertex.push(wv);
-      }
-      schema.wheel_vertex = { type: "shuffle", length: carConstants.wheelCount, min: 0, range: wheelVertex.length, factor: 1 };
-      totalGenes += carConstants.wheelCount;
-
-      schema.wheel_radius = { type: "float", length: carConstants.wheelCount, min: carConstants.wheelMinRadius, range: (carConstants.wheelMaxRadius - carConstants.wheelMinRadius) };
-      schema.wheel_density = { type: "float", length: carConstants.wheelCount, min: carConstants.wheelMinDensity, range: (carConstants.wheelMaxDensity - carConstants.wheelMinDensity) };
-      totalGenes += carConstants.wheelCount * 2;
-
-      schema.wheel_joint_x = { type: "float", length: carConstants.wheelCount, min: carConstants.wheelJointMin, range: (carConstants.wheelJointMax - carConstants.wheelJointMin) };
-      schema.wheel_joint_y = { type: "float", length: carConstants.wheelCount, min: carConstants.wheelJointMin, range: (carConstants.wheelJointMax - carConstants.wheelJointMin) };
-      totalGenes += carConstants.wheelCount * 2;
-
-      schema.wheel_joint_motor_force = { type: "float", length: carConstants.wheelCount, min: carConstants.wheelJointMotorForceMin, range: (carConstants.wheelJointMotorForceMax - carConstants.wheelJointMotorForceMin) };
-      schema.wheel_joint_motor_speed = { type: "float", length: carConstants.wheelCount, min: carConstants.wheelJointMotorSpeedMin, range: (carConstants.wheelJointMotorSpeedMax - carConstants.wheelJointMotorSpeedMin) };
-      totalGenes += carConstants.wheelCount * 2;
-
-      return { schema: schema, totalGenes: totalGenes };
     }
   };
 
@@ -541,6 +493,128 @@ var genetics = (function () {
     return nextState;
   }
 
+
+  /**
+   * Convert a genetic definition into a Box2D car instance.
+   * @param {Object} normal_def - Normalized car definition.
+   * @param {b2World} world - Box2D physics world.
+   * @param {Object} constants - Car physics constants (gravity, schema, motorSpeed, finishLine).
+   * @returns {Object} Car instance with chassis and wheels.
+   */
+  function defToCar(normal_def, world, constants) {
+    var car_def = createInstance.applyTypes(constants.schema, normal_def)
+    var instance = {};
+    instance.chassis = createChassis(
+      world, car_def.vertex_list, car_def.chassis_density
+    );
+    var i;
+
+    var wheelCount = car_def.wheel_radius.length;
+
+    instance.wheels = [];
+    for (i = 0; i < wheelCount; i++) {
+      instance.wheels[i] = createWheel(
+        world,
+        car_def.wheel_radius[i],
+        car_def.wheel_density[i]
+      );
+    }
+
+    var carmass = instance.chassis.GetMass();
+    for (i = 0; i < wheelCount; i++) {
+      carmass += instance.wheels[i].GetMass();
+    }
+
+    var joint_def = new b2RevoluteJointDef();
+
+    for (i = 0; i < wheelCount; i++) {
+      var torque = carmass * -constants.gravity.y / car_def.wheel_radius[i];
+
+      var randvertex = instance.chassis.vertex_list[car_def.wheel_vertex[i]];
+      joint_def.localAnchorA.Set(randvertex.x, randvertex.y);
+      joint_def.localAnchorB.Set(0, 0);
+      joint_def.maxMotorTorque = torque;
+      joint_def.motorSpeed = -constants.motorSpeed;
+      joint_def.enableMotor = true;
+      joint_def.bodyA = instance.chassis;
+      joint_def.bodyB = instance.wheels[i];
+      world.CreateJoint(joint_def);
+    }
+
+    return instance;
+  }
+
+  /**
+   * Create a convex polygon chassis body from vertices.
+   */
+  function createChassis(world, vertexs, density) {
+    var vertex_list = [];
+    vertex_list.push(new b2Vec2(vertexs[0], 0));
+    vertex_list.push(new b2Vec2(vertexs[1], vertexs[2]));
+    vertex_list.push(new b2Vec2(0, vertexs[3]));
+    vertex_list.push(new b2Vec2(-vertexs[4], vertexs[5]));
+    vertex_list.push(new b2Vec2(-vertexs[6], 0));
+    vertex_list.push(new b2Vec2(-vertexs[7], -vertexs[8]));
+    vertex_list.push(new b2Vec2(0, -vertexs[9]));
+    vertex_list.push(new b2Vec2(vertexs[10], -vertexs[11]));
+
+    var body_def = new b2BodyDef();
+    body_def.type = b2Body.b2_dynamicBody;
+    body_def.position.Set(0.0, 4.0);
+
+    var body = world.CreateBody(body_def);
+
+    createChassisPart(body, vertex_list[0], vertex_list[1], density);
+    createChassisPart(body, vertex_list[1], vertex_list[2], density);
+    createChassisPart(body, vertex_list[2], vertex_list[3], density);
+    createChassisPart(body, vertex_list[3], vertex_list[4], density);
+    createChassisPart(body, vertex_list[4], vertex_list[5], density);
+    createChassisPart(body, vertex_list[5], vertex_list[6], density);
+    createChassisPart(body, vertex_list[6], vertex_list[7], density);
+    createChassisPart(body, vertex_list[7], vertex_list[0], density);
+
+    body.vertex_list = vertex_list;
+
+    return body;
+  }
+
+  function createChassisPart(body, vertex1, vertex2, density) {
+    var vertex_list = [];
+    vertex_list.push(vertex1);
+    vertex_list.push(vertex2);
+    vertex_list.push(b2Vec2.Make(0, 0));
+    var fix_def = new b2FixtureDef();
+    fix_def.shape = new b2PolygonShape();
+    fix_def.density = density;
+    fix_def.friction = 10;
+    fix_def.restitution = 0.2;
+    fix_def.filter.groupIndex = -1;
+    fix_def.shape.SetAsArray(vertex_list, 3);
+
+    body.CreateFixture(fix_def);
+  }
+
+  /**
+   * Create a circular wheel body with physics fixtures.
+   */
+  function createWheel(world, radius, density) {
+    var body_def = new b2BodyDef();
+    body_def.type = b2Body.b2_dynamicBody;
+    body_def.position.Set(0, 0);
+
+    var body = world.CreateBody(body_def);
+
+    var fix_def = new b2FixtureDef();
+    fix_def.shape = new b2CircleShape(radius);
+    fix_def.density = density;
+    fix_def.friction = 1;
+    fix_def.restitution = 0.2;
+    fix_def.filter.groupIndex = -1;
+
+    body.CreateFixture(fix_def);
+    return body;
+  }
+
   var carRun = {
     getInitialState: getInitialState,
     updateState: updateState,
@@ -554,6 +628,9 @@ var genetics = (function () {
    * ========================================================================== */
 
   return {
+    // Car construction (Box2D-dependent)
+    defToCar: defToCar,
+
     // Car run (state machine)
     carRun: carRun,
 
