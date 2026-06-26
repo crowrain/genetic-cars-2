@@ -65,7 +65,7 @@ var genetics = (function () {
     mapToShuffle(prop, normals) {
       return normals.map(function (normal) {
         var min = prop.min || 0;
-        var range = prop.range || 1;
+        var range = prop.limit || prop.range || 1;
         return min + Math.floor(normal * range);
       });
     },
@@ -198,7 +198,7 @@ var genetics = (function () {
         wheel_density: { type: "float", length: values.wheelCount, min: values.wheelMinDensity, range: values.wheelDensityRange, factor: 1 },
         chassis_density: { type: "float", length: 1, min: values.chassisDensityRange, range: values.chassisMinDensity, factor: 1 },
         vertex_list: { type: "float", length: 12, min: values.chassisMinAxis, range: values.chassisAxisRange, factor: 1 },
-        wheel_vertex: { type: "shuffle", length: 8, limit: values.wheelCount, factor: 1 },
+        wheel_vertex: { type: "shuffle", length: values.wheelCount, limit: 8, factor: 1 },
       };
     }
   };
