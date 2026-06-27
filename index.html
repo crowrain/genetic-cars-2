@@ -6,7 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-store" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <title>HTML5 Genetic Algorithm 2D Car Thingy - Chrome recommended</title>
+  <title>Генетический алгоритм 2D-автомобилей — рекомендуется Chrome</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -33,7 +33,7 @@
         <div class="float-left">
 
           <div id="topscoreholder">
-            <input id="toggle-ghost" type="button" value="View top replay" /><br />
+            <input id="toggle-ghost" type="button" value="▶ Лучший результат" /><br />
             <div id="topscores"></div>
           </div>
 
@@ -58,54 +58,54 @@
           <input type="hidden" name="cmd" value="_s-xclick">
           <input type="hidden" name="hosted_button_id" value="X8VB9NDYWQDPE">
           <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif" border="0" name="submit"
-            alt="PayPal - The safer, easier way to pay online!">
+            alt="PayPal — безопасный и простой платёж!">
           <img alt="" border="0" src="https://www.paypalobjects.com/pt_BR/i/scr/pixel.gif" width="1" height="1">
         </form>
         <br />
 
         <div class="buttons">
-          <input id="save-progress" type="button" value="Save Population" />
-          <input id="restore-progress" type="button" value="Restore Saved Population" />
-          <input id="toggle-display" type="button" value="Surprise!" />
-          <input id="new-population" type="button" value="New Population" />
-          <input id="fast-forward" type="button" value="Fast Forward" />
+          <input id="save-progress" type="button" value="💾 Сохранить популяцию" />
+          <input id="restore-progress" type="button" value="📂 Загрузить популяцию" />
+          <input id="toggle-display" type="button" value="Скрывать машины" />
+          <input id="new-population" type="button" value="🔄 Новая популяция" />
+          <input id="fast-forward" type="button" value="⏩ Ускорить" />
         </div>
 
-        <div id="server-status" class="server-status">Server sync: starting</div>
+        <div id="server-status" class="server-status">Синхронизация: начало</div>
 
         <div>
-          <label>Create new world with seed</label><br>
-          <input type="text" placeholder="Enter any string" id="newseed" />
-          <input id="confirm-reset" type="button" value="Go!" />
+          <label>Создать новый мир по сид</label><br>
+          <input type="text" placeholder="Введите любую строку" id="newseed" />
+          <input id="confirm-reset" type="button" value="Погнали!" />
         </div>
 
         <table>
           <tr>
-            <td>Generation</td>
+            <td>Поколение</td>
             <td>
               <div id="generation"></div>
             </td>
           </tr>
           <tr>
-            <td>Cars alive</td>
+            <td>Живых машин</td>
             <td>
               <div id="population"></div>
             </td>
           </tr>
           <tr>
-            <td>Distance</td>
+            <td>Дистанция</td>
             <td>
               <div id="distancemeter"></div>
             </td>
           </tr>
           <tr>
-            <td>Height</td>
+            <td>Высота</td>
             <td>
               <div id="heightmeter"></div>
             </td>
           </tr>
           <tr>
-            <td>Mutation rate:</td>
+            <td>Частота мутаций:</td>
             <td>
               <select id="mutationrate">
                 <option value="0">0%</option>
@@ -125,7 +125,7 @@
             </td>
           </tr>
           <tr>
-            <td>Mutation size:</td>
+            <td>Размер мутаций:</td>
             <td>
               <select id="mutationsize">
                 <option value="0">0%</option>
@@ -145,31 +145,31 @@
             </td>
           </tr>
           <tr>
-            <td>Floor:</td>
+            <td>Поверхность:</td>
             <td>
               <select id="floor">
-                <option value="0" selected="selected">fixed</option>
-                <option value="1">mutable</option>
+                <option value="0" selected="selected">фиксированная</option>
+                <option value="1">мутирующая</option>
               </select>
             </td>
           </tr>
           <tr>
-            <td>Gravity:</td>
+            <td>Гравитация:</td>
             <td>
               <select id="gravity">
-                <option value="24.8">Jupiter (24.8)</option>
-                <option value="11.2">Neptune (11.2)</option>
-                <option value="10.4">Saturn (10.4)</option>
-                <option value="9.81" selected="selected">Earth (9.81)</option>
-                <option value="8.9">Venus (8.9)</option>
-                <option value="8.7">Uranus (8.7)</option>
-                <option value="3.7">Mars/Mercury (3.7)</option>
-                <option value="1.6">Moon (1.6)</option>
+                <option value="24.8">Юпитер (24.8)</option>
+                <option value="11.2">Нептун (11.2)</option>
+                <option value="10.4">Сатурн (10.4)</option>
+                <option value="9.81" selected="selected">Земля (9.81)</option>
+                <option value="8.9">Венера (8.9)</option>
+                <option value="8.7">Уран (8.7)</option>
+                <option value="3.7">Марс/Меркурий (3.7)</option>
+                <option value="1.6">Луна (1.6)</option>
               </select>
             </td>
           </tr>
           <tr>
-            <td>Elite clones:</td>
+            <td>Элитные клоны:</td>
             <td>
               <select id="elitesize">
                 <option value="0">0</option>
@@ -190,7 +190,7 @@
 
         <br>
 
-        <input type="button" value="Watch Leader" onclick="cw_setCameraTarget(-1)" />
+        <input type="button" value="👁 Смотреть лидера" onclick="cw_setCameraTarget(-1)" />
         <div id="health"></div>
         <div id="cars"></div>
       </div>
@@ -200,103 +200,99 @@
 
 
   <div id="explanation">
-    <h3>But what is it?</h3>
-    <p>The program uses a simple genetic algorithm to evolve random two-wheeled shapes into cars over generations.
-      Loosely
-      based on <a href="http://boxcar2d.com/">BoxCar2D</a>, but
-      written from scratch, only using the same physics engine (<a href="http://box2d.org/">box2d</a>).<br />
-      seedrandom.js written by <a href="http://davidbau.com/">David Bau</a>. (thanks!)</p>
+    <h3>Что это такое?</h3>
+    <p>Программа использует простой генетический алгоритм для эволюции случайных двухколёсных фигур в автомобили на протяжении поколений.
+      Основано на <a href="http://boxcar2d.com/">BoxCar2D</a>, но
+      написано с нуля, используя тот же движок физики (<a href="http://box2d.org/">box2d</a>).<br />
+      seedrandom.js написан <a href="http://davidbau.com/">David Bau</a>. (спасибо!)</p>
 
 
-    <h3>Controls</h3>
+    <h3>Управление</h3>
     <table>
       <tr>
-        <th>Save Population</th>
-        <td>Saves current population locally.</td>
+        <th>Сохранить популяцию</th>
+        <td>Сохраняет текущую популяцию локально.</td>
       </tr>
       <tr>
-        <th>Restore Saved Population</th>
-        <td>Restore a previously saved population.</td>
+        <th>Загрузить популяцию</th>
+        <td>Восстанавливает ранее сохранённую популяцию.</td>
       </tr>
       <tr>
-        <th>Suprise</th>
-        <td>Toggles drawing, makes the simulation faster.</td>
+        <th>Скрывать машины</th>
+        <td>Переключает отрисовку машин — симуляция становится быстрее.</td>
       </tr>
       <tr>
-        <th>New Population</th>
-        <td>Keeps the generated track and restarts the whole car population.</td>
+        <th>Новая популяция</th>
+        <td>Оставляет сгенерированную трассу и перезапускает всю популяцию машин.</td>
       </tr>
       <tr>
-        <th>Create new world with seed</th>
-        <td>The same seed always creates the same track, so you can agree on a seed with your friends
-          and compete. :)
+        <th>Создать новый мир по сид</th>
+        <td>Один и тот же сид всегда создаёт одну и ту же трассу — договоритесь с друзьями о сиде
+          и соревнуйтесь! :)
         </td>
       </tr>
       <tr>
-        <th>Mutation rate</th>
-        <td>The chance that each gene in each individual will mutate to a random value when a new generation is
-          born.
+        <th>Частота мутаций</th>
+        <td>Вероятность того, что каждый ген у каждой особи изменится на случайное значение при появлении
+          нового поколения.
         </td>
       </tr>
       <tr>
-        <th>Mutation size</th>
-        <td>The range each gene can mutate into. Lower numbers mean the gene will have values closer to the
-          original.
+        <th>Размер мутаций</th>
+        <td>Диапазон, в котором ген может мутировать. Меньшие значения означают, что ген будет ближе к
+          исходному.
         </td>
       </tr>
       <tr>
-        <th>Elite clones</th>
-        <td>The top n cars that will be copied over to the next generation.</td>
+        <th>Элитные клоны</th>
+        <td>Количество лучших машин, которые будут скопированы в следующее поколение без изменений.</td>
       </tr>
       <tr>
-        <th>View top replay</th>
-        <td>Pause the current simulation and show the top performing car. Click a second time to resume
-          simulation.
+        <th>▶ Лучший результат</th>
+        <td>Останавливает текущую симуляцию и показывает лучшую машину. Нажмите повторно, чтобы
+          возобновить.
         </td>
       </tr>
     </table>
 
-    <h3>Graph</h3>
+    <h3>График</h3>
     <table>
       <tr>
-        <th>Red</th>
-        <td>Top score in each generation</td>
+        <th>🔴 Красный</th>
+        <td>Лучший результат в каждом поколении</td>
       </tr>
       <tr>
-        <th>Green</th>
-        <td>Average of the top 10 cars in each generation</td>
+        <th>🟢 Зелёный</th>
+        <td>Среднее лучших 10 машин в каждом поколении</td>
       </tr>
       <tr>
-        <th>Blue</th>
-        <td>Average of the entire generation</td>
+        <th>🔵 Синий</th>
+        <td>Среднее по всей популяции</td>
       </tr>
     </table>
 
-    <h3>Genome</h3>
+    <h3>Геном</h3>
     <p>
-      The genome consists of:
+      Геном состоит из:
     </p>
     <ul>
-      <li>Shape (8 genes, 1 per vertex)</li>
-      <li>Wheel size (2 genes, 1 per wheel)</li>
-      <li>Wheel position (2 genes, 1 per wheel)</li>
-      <li>Wheel density (2 genes, 1 per wheel) darker wheels mean denser wheels</li>
-      <li>Chassis density (1 gene) darker body means denser chassis</li>
+      <li>Количество колёс (1 ген, диапазон 1–8)</li>
+      <li>Форма шасси (8 генов, 1 на вершину)</li>
+      <li>Размер колёс (8 генов, 1 на колесо)</li>
+      <li>Позиция колёс (8 генов, 1 на колесо)</li>
+      <li>Плотность колёс (8 генов, 1 на колесо) — более тёмные = плотнее</li>
+      <li>Плотность шасси (1 ген) — более тёмное = плотнее</li>
     </ul>
 
-    <h3>Blurb</h3>
-    <p>This is not as deterministic as it should be, so your best car may not perform as well as it once did. The
-      terrain
-      gets more complex with distance.<br />
-      I'm not in the mood to deal with checking if all scripts have loaded before running, so refresh the page if things
-      seem whack.</p>
+    <h3>Примечания</h3>
+    <p>Симуляция не полностью детерминирована, поэтому ваша лучшая машина может показать немного другой результат при повторном запуске.
+      Террейн усложняется с расстоянием.<br />
+      Если что-то выглядит не так — обновите страницу.</p>
 
     <h3>GitHub</h3>
-    <p>The code is now on a <a href="https://github.com/red42/HTML5_Genetic_Cars">GitHub repository</a>. Feel free to
-      contribute!</p>
+    <p>Код доступен в <a href="https://github.com/red42/HTML5_Genetic_Cars">репозитории GitHub</a>. Вклад приветствуется!</p>
 
-    <p>Originally written by <a href="http://rednuht.org">this guy</a>, now with contributions from patient people at
-      GitHub.</p>
+    <p>Изначально написано <a href="http://rednuht.org">этим парнем</a>, сейчас развивается благодаря терпеливым людям на GitHub.</p>
   </div>
 
   <div name="minimapmarker" class="minimapmarker"></div>

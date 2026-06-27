@@ -241,7 +241,7 @@
   function cw_listTopScores(elem, state) {
     var cw_topScores = state.cw_topScores;
     var ts = elem;
-    ts.innerHTML = "<b>Top Scores:</b><br />";
+    ts.innerHTML = "<b>Лучшие результаты:</b><br />";
     cw_topScores.sort(function (a, b) {
       if (a.v > b.v) {
         return -1
@@ -787,8 +787,8 @@
    * @param {number} height - Current height
    */
   function showDistance(distance, height) {
-    distanceMeter.innerHTML = distance + " meters<br />";
-    heightMeter.innerHTML = height + " meters";
+    distanceMeter.innerHTML = distance + " м<br />";
+    heightMeter.innerHTML = height + " м";
     if (distance > minimapfogdistance) {
       fogdistance.width = 800 - Math.round(distance + 15) * minimapscale + "px";
       minimapfogdistance = distance;
@@ -953,7 +953,7 @@
     return fetch(serverSync.apiBase + "/api/state", { cache: "no-store" }).then(function (response) {
       if (response.status === 404) {
         if (!options.quiet404) {
-          serverSetStatus("Server sync: no saved state yet", "warning");
+          serverSetStatus("Синхронизация: сохранённого состояния ещё нет", "warning");
         }
         return null;
       }
@@ -967,29 +967,29 @@
       }
       var remoteGeneration = Number(snapshot.generation || 0);
       if (options.onlyIfNewer && generationState && remoteGeneration <= Number(generationState.counter || 0)) {
-        serverSetStatus("Server sync: watching generation " + generationState.counter, "running");
+        serverSetStatus("Синхронизация: наблюдаю поколение " + generationState.counter, "running");
         return false;
       }
       if (options.deferActive && !serverSync.isRunner && carMap.size > 0) {
         serverSync.pendingSnapshot = snapshot;
         serverSetStatus(
-          "Server sync: generation " + remoteGeneration + " ready; waiting for current round",
+          "Синхронизация: поколение " + remoteGeneration + " готово; ожидаю текущий раунд",
           "warning"
         );
         return false;
       }
       if (applyProgressSnapshot(snapshot, { start: true })) {
-        serverSetStatus("Server sync: loaded generation " + remoteGeneration, "running");
+        serverSetStatus("Синхронизация: загружено поколение " + remoteGeneration, "running");
         return true;
       }
       return false;
     }).catch(function (err) {
       if (!options.quiet) {
         if (err.message === "Failed to fetch" || err.message === "TypeError") {
-          serverSetStatus("Server sync: no backend available (port 8089)", "warning");
+          serverSetStatus("Синхронизация: бэкенд недоступен (порт 8089)", "warning");
         } else {
-          serverSetStatus("Server sync: " + err.message, "error");
-          console.error("Server sync fetch failed", err);
+          serverSetStatus("Синхронизация: " + err.message, "error");
+          console.error("Ошибка синхронизации", err);
         }
       }
       throw err;
@@ -1013,7 +1013,7 @@
 
     serverSync.pendingSnapshot = null;
     if (applyProgressSnapshot(snapshot, { start: true })) {
-      serverSetStatus("Server sync: loaded generation " + remoteGeneration, "running");
+      serverSetStatus("Синхронизация: загружено поколение " + remoteGeneration, "running");
       return true;
     }
     return false;
@@ -1047,10 +1047,10 @@
       }
       return response.json();
     }).then(function () {
-      serverSetStatus("Server runner: saved generation " + snapshot.generation, "running");
+      serverSetStatus("Эволюция: сохранено поколение " + snapshot.generation, "running");
     }).catch(function (err) {
-      serverSetStatus("Server runner: save failed - " + err.message, "error");
-      console.error("Server save failed", err);
+      serverSetStatus("Эволюция: ошибка сохранения — " + err.message, "error");
+      console.error("Ошибка сохранения", err);
     }).finally(function () {
       serverSync.saveInFlight = false;
       if (serverSync.pendingSave) {
@@ -1066,7 +1066,7 @@
     if (!serverSync.enabled || serverSync.isRunner || serverSync.pollTimer) {
       return;
     }
-    serverSetStatus("Server sync: watching autonomous runner", "running");
+    serverSetStatus("Синхронизация: наблюдаю автономную эволюцию", "running");
     serverSync.pollTimer = setInterval(function () {
       serverLoadLatest({ onlyIfNewer: true, quiet404: true, quiet: true, deferActive: true })
         .then(function () {
@@ -1077,9 +1077,9 @@
           if (serverSync.pollFailureCount >= serverSync.maxPollFailures) {
             clearInterval(serverSync.pollTimer);
             serverSync.pollTimer = null;
-            serverSetStatus("Server sync: backend unavailable (port 8089) — polling stopped", "warning");
+            serverSetStatus("Синхронизация: бэкенд недоступен (порт 8089) — опрос остановлен", "warning");
           } else {
-            serverSetStatus("Server sync: backend unavailable (attempt " + serverSync.pollFailureCount + "/" + serverSync.maxPollFailures + ")", "warning");
+            serverSetStatus("Синхронизация: бэкенд недоступен (попытка " + serverSync.pollFailureCount + "/" + serverSync.maxPollFailures + ")", "warning");
           }
         });
     }, serverSync.pollMs);
@@ -1099,7 +1099,7 @@
       queueServerSave("heartbeat");
     }, 30000);
     window.__boxcarRunnerReady = true;
-    serverSetStatus("Server runner: evolving generation " + generationState.counter, "running");
+    serverSetStatus("Эволюция: поколение " + generationState.counter, "running");
     cw_paused = false;
     cw_startSimulation();
   }
@@ -1109,18 +1109,18 @@
    */
   function initServerSync() {
     if (!serverSync.enabled) {
-      serverSetStatus("Server sync: disabled", "warning");
+      serverSetStatus("Синхронизация: отключена", "warning");
       cw_startSimulation();
       return;
     }
 
-    serverSetStatus(serverSync.isRunner ? "Server runner: loading state" : "Server sync: loading state", "warning");
+    serverSetStatus(serverSync.isRunner ? "Эволюция: загрузка состояния" : "Синхронизация: загрузка состояния", "warning");
     serverLoadLatest({ quiet404: true }).catch(function (err) {
       if (err.message === "Failed to fetch" || err.message === "TypeError") {
-        serverSetStatus("Server sync: no backend (port 8089) — running locally", "warning");
+        serverSetStatus("Синхронизация: бэкенд недоступен (порт 8089) — работаю локально", "warning");
       } else {
-        serverSetStatus("Server sync: " + err.message, "error");
-        console.error("Server sync load failed", err);
+        serverSetStatus("Синхронизация: " + err.message, "error");
+        console.error("Ошибка загрузки синхронизации", err);
       }
       return false;
     }).then(function (loaded) {
@@ -1671,7 +1671,7 @@
   function restoreProgress() {
     var snapshot = loadProgressFromLocal();
     if (!snapshot) {
-      alert("No saved progress found");
+      alert("Сохранённый прогресс не найден");
       return;
     }
     applyProgressSnapshot(snapshot, { start: true });
@@ -1685,7 +1685,7 @@
    * Confirm and execute world reset after user click.
    */
   function cw_confirmResetWorld() {
-    if (confirm('Really reset world?')) {
+    if (confirm('Действительно сбросить мир?')) {
       cw_resetWorld();
     } else {
       return false;
@@ -1745,10 +1745,10 @@
   function cw_toggleGhostReplay(button) {
     if (cw_ghostReplayInterval == null) {
       cw_startGhostReplay();
-      button.value = "Resume simulation";
+      button.value = "Продолжить симуляцию";
     } else {
       cw_stopGhostReplay();
-      button.value = "View top replay";
+      button.value = "▶ Лучший результат";
     }
   }
   // ghost replay stuff END
