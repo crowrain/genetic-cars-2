@@ -241,7 +241,7 @@
   function cw_listTopScores(elem, state) {
     var cw_topScores = state.cw_topScores;
     var ts = elem;
-    ts.innerHTML = "<b>Лучшие результаты:</b><br />";
+    ts.innerHTML = cw_t('top_scores');
     cw_topScores.sort(function (a, b) {
       if (a.v > b.v) {
         return -1
@@ -787,8 +787,8 @@
    * @param {number} height - Current height
    */
   function showDistance(distance, height) {
-    distanceMeter.innerHTML = distance + " м<br />";
-    heightMeter.innerHTML = height + " м";
+    distanceMeter.innerHTML = distance + " " + cw_t('unit.meters') + "<br />";
+    heightMeter.innerHTML = height + " " + cw_t('unit.meters');
     if (distance > minimapfogdistance) {
       fogdistance.width = 800 - Math.round(distance + 15) * minimapscale + "px";
       minimapfogdistance = distance;
@@ -953,7 +953,7 @@
     return fetch(serverSync.apiBase + "/api/state", { cache: "no-store" }).then(function (response) {
       if (response.status === 404) {
         if (!options.quiet404) {
-          serverSetStatus("Синхронизация: сохранённого состояния ещё нет", "warning");
+          serverSetStatus(cw_t('status.no_state'), "warning");
         }
         return null;
       }
@@ -967,29 +967,29 @@
       }
       var remoteGeneration = Number(snapshot.generation || 0);
       if (options.onlyIfNewer && generationState && remoteGeneration <= Number(generationState.counter || 0)) {
-        serverSetStatus("Синхронизация: наблюдаю поколение " + generationState.counter, "running");
+        serverSetStatus(cw_t('status.watching', {gen: generationState.counter}), "running");
         return false;
       }
       if (options.deferActive && !serverSync.isRunner && carMap.size > 0) {
         serverSync.pendingSnapshot = snapshot;
         serverSetStatus(
-          "Синхронизация: поколение " + remoteGeneration + " готово; ожидаю текущий раунд",
+          cw_t('status.ready', {gen: remoteGeneration}),
           "warning"
         );
         return false;
       }
       if (applyProgressSnapshot(snapshot, { start: true })) {
-        serverSetStatus("Синхронизация: загружено поколение " + remoteGeneration, "running");
+        serverSetStatus(cw_t('status.loaded', {gen: remoteGeneration}), "running");
         return true;
       }
       return false;
     }).catch(function (err) {
       if (!options.quiet) {
         if (err.message === "Failed to fetch" || err.message === "TypeError") {
-          serverSetStatus("Синхронизация: бэкенд недоступен (порт 8089)", "warning");
+          serverSetStatus(cw_t('status.backend_offline'), "warning");
         } else {
-          serverSetStatus("Синхронизация: " + err.message, "error");
-          console.error("Ошибка синхронизации", err);
+          serverSetStatus(cw_t('status.error', {msg: err.message}), "error");
+          console.error("Sync error", err);
         }
       }
       throw err;
@@ -1013,7 +1013,7 @@
 
     serverSync.pendingSnapshot = null;
     if (applyProgressSnapshot(snapshot, { start: true })) {
-      serverSetStatus("Синхронизация: загружено поколение " + remoteGeneration, "running");
+      serverSetStatus(cw_t('status.loaded', {gen: remoteGeneration}), "running");
       return true;
     }
     return false;
@@ -1050,7 +1050,7 @@
       serverSetStatus("Эволюция: сохранено поколение " + snapshot.generation, "running");
     }).catch(function (err) {
       serverSetStatus("Эволюция: ошибка сохранения — " + err.message, "error");
-      console.error("Ошибка сохранения", err);
+      console.error("Save error", err);
     }).finally(function () {
       serverSync.saveInFlight = false;
       if (serverSync.pendingSave) {
@@ -1066,7 +1066,7 @@
     if (!serverSync.enabled || serverSync.isRunner || serverSync.pollTimer) {
       return;
     }
-    serverSetStatus("Синхронизация: наблюдаю автономную эволюцию", "running");
+    serverSetStatus(cw_t('status.autonomous'), "running");
     serverSync.pollTimer = setInterval(function () {
       serverLoadLatest({ onlyIfNewer: true, quiet404: true, quiet: true, deferActive: true })
         .then(function () {
@@ -1077,9 +1077,9 @@
           if (serverSync.pollFailureCount >= serverSync.maxPollFailures) {
             clearInterval(serverSync.pollTimer);
             serverSync.pollTimer = null;
-            serverSetStatus("Синхронизация: бэкенд недоступен (порт 8089) — опрос остановлен", "warning");
+            serverSetStatus(cw_t('status.backend_stopped'), "warning");
           } else {
-            serverSetStatus("Синхронизация: бэкенд недоступен (попытка " + serverSync.pollFailureCount + "/" + serverSync.maxPollFailures + ")", "warning");
+            serverSetStatus(cw_t('status.backend_attempt', {n: serverSync.pollFailureCount, max: serverSync.maxPollFailures}), "warning");
           }
         });
     }, serverSync.pollMs);
@@ -1109,18 +1109,18 @@
    */
   function initServerSync() {
     if (!serverSync.enabled) {
-      serverSetStatus("Синхронизация: отключена", "warning");
+      serverSetStatus(cw_t('status.disabled'), "warning");
       cw_startSimulation();
       return;
     }
 
-    serverSetStatus(serverSync.isRunner ? "Эволюция: загрузка состояния" : "Синхронизация: загрузка состояния", "warning");
+    serverSetStatus(serverSync.isRunner ? cw_t('status.evolution_loading') : cw_t('status.loading'), "warning");
     serverLoadLatest({ quiet404: true }).catch(function (err) {
       if (err.message === "Failed to fetch" || err.message === "TypeError") {
-        serverSetStatus("Синхронизация: бэкенд недоступен (порт 8089) — работаю локально", "warning");
+        serverSetStatus(cw_t('status.backend_local'), "warning");
       } else {
-        serverSetStatus("Синхронизация: " + err.message, "error");
-        console.error("Ошибка загрузки синхронизации", err);
+        serverSetStatus(cw_t('status.error', {msg: err.message}), "error");
+        console.error("Sync load error", err);
       }
       return false;
     }).then(function (loaded) {
@@ -1671,7 +1671,7 @@
   function restoreProgress() {
     var snapshot = loadProgressFromLocal();
     if (!snapshot) {
-      alert("Сохранённый прогресс не найден");
+      alert(cw_t('alert.no_save'));
       return;
     }
     applyProgressSnapshot(snapshot, { start: true });
@@ -1685,7 +1685,7 @@
    * Confirm and execute world reset after user click.
    */
   function cw_confirmResetWorld() {
-    if (confirm('Действительно сбросить мир?')) {
+    if (confirm(cw_t('confirm.reset'))) {
       cw_resetWorld();
     } else {
       return false;
@@ -1745,10 +1745,10 @@
   function cw_toggleGhostReplay(button) {
     if (cw_ghostReplayInterval == null) {
       cw_startGhostReplay();
-      button.value = "Продолжить симуляцию";
+      button.value = cw_t('btn.continue');
     } else {
       cw_stopGhostReplay();
-      button.value = "▶ Лучший результат";
+      button.value = cw_t('btn.best_result');
     }
   }
   // ghost replay stuff END
