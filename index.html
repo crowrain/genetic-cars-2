@@ -6,7 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-store" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <title>HTML5 Genetic Algorithm 2D Car Thingy - Chrome recommended</title>
+  <title>HTML5 Genetic Algorithm 2D Car Thingy — Chrome recommended</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -33,7 +33,7 @@
         <div class="float-left">
 
           <div id="topscoreholder">
-            <input id="toggle-ghost" type="button" value="View top replay" /><br />
+            <input id="toggle-ghost" type="button" value="▶ Best Result" /><br />
             <div id="topscores"></div>
           </div>
 
@@ -54,28 +54,24 @@
     <div class="float-left">
 
       <div id="data">
-        <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_blank">
-          <input type="hidden" name="cmd" value="_s-xclick">
-          <input type="hidden" name="hosted_button_id" value="X8VB9NDYWQDPE">
-          <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif" border="0" name="submit"
-            alt="PayPal - The safer, easier way to pay online!">
-          <img alt="" border="0" src="https://www.paypalobjects.com/pt_BR/i/scr/pixel.gif" width="1" height="1">
-        </form>
+        <div class="buttons" id="lang-switcher">
+          <input id="lang-toggle" type="button" value="🇷🇺 Русский" onclick="if(cw_currentLang()==='ru')cw_setLang('en');else cw_setLang('ru');" title="Switch language" />
+        </div>
         <br />
 
         <div class="buttons">
-          <input id="save-progress" type="button" value="Save Population" />
-          <input id="restore-progress" type="button" value="Restore Saved Population" />
-          <input id="toggle-display" type="button" value="Surprise!" />
-          <input id="new-population" type="button" value="New Population" />
-          <input id="fast-forward" type="button" value="Fast Forward" />
+          <input id="save-progress" type="button" value="💾 Save Population" />
+          <input id="restore-progress" type="button" value="📂 Load Population" />
+          <input id="toggle-display" type="button" value="Hide Cars" />
+          <input id="new-population" type="button" value="🔄 New Population" />
+          <input id="fast-forward" type="button" value="⏩ Speed Up" />
         </div>
 
-        <div id="server-status" class="server-status">Server sync: starting</div>
+        <div id="server-status" class="server-status">Sync: starting</div>
 
         <div>
-          <label>Create new world with seed</label><br>
-          <input type="text" placeholder="Enter any string" id="newseed" />
+          <label>Create new world from seed</label><br>
+          <input type="text" placeholder="Type any string" id="newseed" />
           <input id="confirm-reset" type="button" value="Go!" />
         </div>
 
@@ -87,7 +83,7 @@
             </td>
           </tr>
           <tr>
-            <td>Cars alive</td>
+            <td>Living Cars</td>
             <td>
               <div id="population"></div>
             </td>
@@ -145,7 +141,7 @@
             </td>
           </tr>
           <tr>
-            <td>Floor:</td>
+            <td>Terrain:</td>
             <td>
               <select id="floor">
                 <option value="0" selected="selected">fixed</option>
@@ -190,7 +186,7 @@
 
         <br>
 
-        <input type="button" value="Watch Leader" onclick="cw_setCameraTarget(-1)" />
+        <input type="button" value="👁 Watch Leader" onclick="cw_setCameraTarget(-1)" />
         <div id="health"></div>
         <div id="cars"></div>
       </div>
@@ -200,58 +196,57 @@
 
 
   <div id="explanation">
-    <h3>But what is it?</h3>
-    <p>The program uses a simple genetic algorithm to evolve random two-wheeled shapes into cars over generations.
-      Loosely
-      based on <a href="http://boxcar2d.com/">BoxCar2D</a>, but
-      written from scratch, only using the same physics engine (<a href="http://box2d.org/">box2d</a>).<br />
-      seedrandom.js written by <a href="http://davidbau.com/">David Bau</a>. (thanks!)</p>
+    <h3>What is this?</h3>
+    <p>This program uses a simple genetic algorithm to evolve random two-wheeled shapes into cars over generations.
+      Based on <a href="http://boxcar2d.com/">BoxCar2D</a>, but
+      written from scratch using the same physics engine (<a href="http://box2d.org/">box2d</a>).<br />
+      seedrandom.js by <a href="http://davidbau.com/">David Bau</a>. (thanks!)</p>
 
 
     <h3>Controls</h3>
     <table>
       <tr>
         <th>Save Population</th>
-        <td>Saves current population locally.</td>
+        <td>Saves the current population to your browser.</td>
       </tr>
       <tr>
-        <th>Restore Saved Population</th>
-        <td>Restore a previously saved population.</td>
+        <th>Load Population</th>
+        <td>Restores a previously saved population.</td>
       </tr>
       <tr>
-        <th>Suprise</th>
-        <td>Toggles drawing, makes the simulation faster.</td>
+        <th>Hide Cars</th>
+        <td>Toggles car rendering — simulation runs faster without drawing.</td>
       </tr>
       <tr>
         <th>New Population</th>
-        <td>Keeps the generated track and restarts the whole car population.</td>
+        <td>Keeps the generated track and respawns all cars from scratch.</td>
       </tr>
       <tr>
-        <th>Create new world with seed</th>
-        <td>The same seed always creates the same track, so you can agree on a seed with your friends
-          and compete. :)
+        <th>Create New World From Seed</th>
+        <td>The same seed always generates the same track — agree on a seed with friends
+          and compete! :)
         </td>
       </tr>
       <tr>
-        <th>Mutation rate</th>
-        <td>The chance that each gene in each individual will mutate to a random value when a new generation is
-          born.
+        <th>Mutation Rate</th>
+        <td>The chance that each gene of each organism will change to a random value when
+          a new generation is created.
         </td>
       </tr>
       <tr>
-        <th>Mutation size</th>
-        <td>The range each gene can mutate into. Lower numbers mean the gene will have values closer to the
-          original.
+        <th>Mutation Size</th>
+        <td>The range by which a gene can mutate. Smaller values mean the gene will stay
+          closer to its original value.
         </td>
       </tr>
       <tr>
-        <th>Elite clones</th>
-        <td>The top n cars that will be copied over to the next generation.</td>
+        <th>Elite Clones</th>
+        <td>Number of the best cars that will be copied unchanged into the next generation.</td>
       </tr>
       <tr>
-        <th>View top replay</th>
-        <td>Pause the current simulation and show the top performing car. Click a second time to resume
-          simulation.
+        <th>▶ Best Result</th>
+        <td>Stops the current simulation and replays the best car. Click again to
+          resume.
         </td>
       </tr>
     </table>
@@ -259,16 +254,16 @@
     <h3>Graph</h3>
     <table>
       <tr>
-        <th>Red</th>
-        <td>Top score in each generation</td>
+        <th>🔴 Red</th>
+        <td>Best score in each generation</td>
       </tr>
       <tr>
-        <th>Green</th>
-        <td>Average of the top 10 cars in each generation</td>
+        <th>🟢 Green</th>
+        <td>Average of top 10 cars in each generation</td>
       </tr>
       <tr>
-        <th>Blue</th>
-        <td>Average of the entire generation</td>
+        <th>🔵 Blue</th>
+        <td>Average of the entire population</td>
       </tr>
     </table>
 
@@ -277,26 +272,25 @@
       The genome consists of:
     </p>
     <ul>
-      <li>Shape (8 genes, 1 per vertex)</li>
-      <li>Wheel size (2 genes, 1 per wheel)</li>
-      <li>Wheel position (2 genes, 1 per wheel)</li>
-      <li>Wheel density (2 genes, 1 per wheel) darker wheels mean denser wheels</li>
-      <li>Chassis density (1 gene) darker body means denser chassis</li>
+      <li>Wheel count (1 gene, range 1–8)</li>
+      <li>Chassis shape (8 genes, 1 per vertex)</li>
+      <li>Wheel size (8 genes, 1 per wheel)</li>
+      <li>Wheel position (8 genes, 1 per wheel)</li>
+      <li>Wheel density (8 genes, 1 per wheel) — darker = denser</li>
+      <li>Chassis density (1 gene) — darker = denser</li>
     </ul>
 
-    <h3>Blurb</h3>
-    <p>This is not as deterministic as it should be, so your best car may not perform as well as it once did. The
-      terrain
-      gets more complex with distance.<br />
-      I'm not in the mood to deal with checking if all scripts have loaded before running, so refresh the page if things
-      seem whack.</p>
+    <h3>Notes</h3>
+    <p>The simulation is not fully deterministic, so your best car may perform slightly differently on a replay.
+      Terrain gets harder with distance.<br />
+      If something looks wrong — refresh the page.</p>
 
     <h3>GitHub</h3>
-    <p>The code is now on a <a href="https://github.com/red42/HTML5_Genetic_Cars">GitHub repository</a>. Feel free to
-      contribute!</p>
+    <p>Code is available in the <a href="https://github.com/crowrain/genetic-cars-2">GitHub repository</a>. Contributions welcome!</p>
 
-    <p>Originally written by <a href="http://rednuht.org">this guy</a>, now with contributions from patient people at
-      GitHub.</p>
+    <p>Originally written by <a href="http://rednuht.org">this guy</a>, now maintained by patient people on GitHub.</p>
+
+    <!-- Language Switcher moved to sidebar -->
   </div>
 
   <div name="minimapmarker" class="minimapmarker"></div>
@@ -308,8 +302,10 @@
 
   <script src="lib/seedrandom.js"></script>
   <script src="lib/box2d.js"></script>
+  <script src="src/genetics.js"></script>
+  <script src="src/locale.js"></script>
+  <script src="src/ghost.js"></script>
   <script src="src/app.js?v=autonomous-20260619-1512"></script>
-
 </body>
 
 </html>
