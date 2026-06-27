@@ -478,18 +478,24 @@
     var tile_position = new b2Vec2(-5, 0);
     var cw_floorTiles = [];
     Math.seedrandom(floorseed);
+
+    // Number of straight tiles at the end (finish straight)
+    var straightTiles = 15;
+    var terrainTiles = maxFloorTiles - straightTiles;
+
     for (var k = 0; k < maxFloorTiles; k++) {
-      if (!mutable_floor) {
-        // keep old impossible tracks if not using mutable floors
-        last_tile = cw_createFloorTile(
-          world, dimensions, tile_position, (Math.random() * 3 - 1.5) * 1.5 * k / maxFloorTiles
-        );
-      } else {
-        // if path is mutable over races, create smoother tracks
-        last_tile = cw_createFloorTile(
-          world, dimensions, tile_position, (Math.random() * 3 - 1.5) * 1.2 * k / maxFloorTiles
-        );
+      var angle = 0;
+      if (k < terrainTiles) {
+        // Terrain tiles with random angles
+        if (!mutable_floor) {
+          angle = (Math.random() * 3 - 1.5) * 1.5 * k / maxFloorTiles;
+        } else {
+          angle = (Math.random() * 3 - 1.5) * 1.2 * k / maxFloorTiles;
+        }
       }
+      // Last `straightTiles` tiles have angle=0 (flat finish straight)
+
+      last_tile = cw_createFloorTile(world, dimensions, tile_position, angle);
       cw_floorTiles.push(last_tile);
       var last_fixture = last_tile.GetFixtureList();
       tile_position = last_tile.GetWorldPoint(last_fixture.GetShape().m_vertices[3]);
@@ -1181,6 +1187,54 @@
   }
 
   /**
+   * Draw the checkered finish line and "FINISH" label on the canvas.
+   * @param {CanvasRenderingContext2D} ctx - Canvas context (already transformed)
+   * @param {Object} camera - Camera with .pos and .zoom
+   * @param {number} finishLineX - X position of the finish line in world coords
+   */
+  function cw_drawFinishLine(ctx, camera, finishLineX) {
+    var zoom = camera.zoom;
+    var camera_x = camera.pos.x;
+
+    // Only draw if finish line is within the visible viewport
+    if (finishLineX < camera_x - 10 || finishLineX > camera_x + 10) {
+      return;
+    }
+
+    var lineW = 0.4 / zoom; // line thickness in world coords
+    var checkSize = 0.3;    // checker square size in world coords
+    var numChecks = 20;
+    var totalHeight = checkSize * numChecks;
+
+    // Draw checkered flag pattern rising UP from ground level (Y=0)
+    // Note: canvas Y is inverted via ctx.scale(zoom, -zoom), so negative = up
+    for (var i = 0; i < numChecks; i++) {
+      var isWhite = i % 2 === 0;
+      ctx.fillStyle = isWhite ? '#fff' : '#222';
+      ctx.fillRect(
+        finishLineX - lineW / 2,
+        -totalHeight + i * checkSize, // -totalHeight (top) to 0 (ground)
+        lineW,
+        checkSize
+      );
+    }
+
+    // Draw "FINISH" text above the checkered line
+    var fontSize = 0.35;
+    ctx.font = "bold " + fontSize + "monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+
+    // Text outline for visibility
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 3 / zoom;
+    ctx.strokeText("FINISH", finishLineX, -totalHeight - 0.1);
+
+    ctx.fillStyle = "#FFD700";
+    ctx.fillText("FINISH", finishLineX, -totalHeight - 0.1);
+  }
+
+  /**
    * Render the main simulation screen: cars, floor, ghost replay, minimap.
    */
 
@@ -1190,6 +1244,7 @@
     cw_setCameraPosition();
     applyCameraTransform(ctx, camera.pos.x, camera.pos.y, camera.zoom);
     cw_drawFloor(ctx, camera, floorTiles);
+    cw_drawFinishLine(ctx, camera, currentRunner.scene.finishLine);
     ghost_draw_frame(ctx, ghost, camera);
     cw_drawCars();
     ctx.restore();
@@ -1251,11 +1306,13 @@
    */
   function cw_drawGhostReplay() {
     var floorTiles = currentRunner.scene.floorTiles;
+    var finishLineX = currentRunner.scene.finishLine;
     var carPosition = ghost_get_position(ghost);
     if (!carPosition) {
       cw_setCameraPosition();
       applyCameraTransform(ctx, camera.pos.x, camera.pos.y, camera.zoom);
       cw_drawFloor(ctx, camera, floorTiles);
+      cw_drawFinishLine(ctx, camera, finishLineX);
       ctx.restore();
       return;
     }
@@ -1270,6 +1327,7 @@
     ghost_draw_frame(ctx, ghost, camera);
     ghost_move_frame(ghost);
     cw_drawFloor(ctx, camera, floorTiles);
+    cw_drawFinishLine(ctx, camera, finishLineX);
     ctx.restore();
   }
 
